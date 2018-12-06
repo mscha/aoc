@@ -1,0 +1,23 @@
+#!/usr/bin/env perl6
+
+use v6.c;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+multi sub MAIN(*@ids, Bool :v(:$verbose) = False)
+{
+    my @counts = @ids.map(*.comb.Bag.invert.Hash);
+    my $twos = +@counts.grep({$_<2>});
+    my $threes = +@counts.grep({$_<3>});
+    say "$twos × $threes = { $twos × $threes }";
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.words, :$verbose);
+}
+
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc2.input'), :$verbose);
+}
