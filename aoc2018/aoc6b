@@ -1,0 +1,120 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+class Grid
+{
+    has @.points;
+    has @.closest-point;
+    has @.total-distance;
+    has @.area;
+    
+    has $!min-x = ∞;
+    has $!max-x = -∞;
+    has $!min-y = ∞;
+    has $!max-y = -∞;
+
+    sub distance (($x1, $y1), ($x2, $y2))
+    {
+        return abs($x1-$x2) + abs($y1-$y2);
+    }
+
+    sub T($n)
+    {
+        return $n × ($n+1) div 2;
+    }
+
+    method add-point($x, $y)
+    {
+        @!points.push: ($x,$y);
+        $!min-x min= $x; $!max-x max= $x;
+        $!min-y min= $y; $!max-y max= $y;
+    }
+
+    method calc-distances
+    {
+        for $!min-x .. $!max-x X $!min-y .. $!max-y -> ($x, $y) {
+            my @dist = @!points.map(*.&distance(($x, $y)));
+            my @closest = @dist.minpairs;
+            @!closest-point[$x;$y] = @closest == 1 ?? @closest[0].key !! -1;
+            @!total-distance[$x;$y] = @dist.sum;
+        }
+    }
+
+    method calc-areas
+    {
+        self.calc-distances unless @!closest-point;
+
+        POINT:
+        for @!points.kv -> $i, $p {
+            for $!min-x .. $!max-x X $!min-y .. $!max-y -> ($x, $y) {
+                if @!closest-point[$x;$y] == $i {
+                    if $x == any($!min-x, $!max-x, $!min-y, $!max-y) {
+                        # Border point, so area is infinite
+                        @!area[$i] = ∞;
+                        next POINT;
+                    }
+                    else {
+                        @!area[$i]++;
+                    }
+                }
+            }
+        }
+    }
+
+    method largest-finite-area
+    {
+        self.calc-areas unless @!area;
+        return @!area.grep(* < ∞).max;
+    }
+
+    method area-with-distance-under($limit)
+    {
+        self.calc-distances unless @!total-distance;
+
+        # First, find the cells within the bounding box within the limit
+        my $area = +@!total-distance[$!min-x .. $!max-x; $!min-y .. $!max-y].grep(* < $limit);
+
+        # We may have cells outside the bounding box that are eligible.
+        # First, look at cells straight above and below the box.
+        # For each point on the top and bottom of the box with distance d < limit, we have
+        # (limit - d - 1) more points above or below that are still eligible.
+        $area += @!total-distance[$!min-x .. $!max-x; $!min-y, $!max-y].grep(* < $limit).map($limit - * - 1).sum;
+
+        # Do the same thing for points left and right of the box.
+        $area += @!total-distance[$!min-x, $!max-x; $!min-y .. $!max-y].grep(* < $limit).map($limit - * - 1).sum;
+
+        # Finally, there may be eligible points above-left, above-right, below-left and
+        # below-right of the box.
+        # For each of the four corners of the box with distance d < limit, we have T(limit - d - 2)
+        # more eligible points (where T(n) is the n-th triangle number, n × (n+1) ÷ 2).
+        $area += @!total-distance[$!min-x, $!max-x; $!min-y, $!max-y].grep(* < $limit).map(($limit - * - 2).&T).sum;
+
+        return $area;
+    }
+}
+
+#| Process coordinates
+multi sub MAIN(*@coords, Int :$dist-limit=10_000)
+{
+    my $grid = Grid.new;
+    for @coords».Int -> $x, $y {
+        $grid.add-point($x, $y);
+    }
+
+    say "The size of the largest area is: $grid.largest-finite-area()";
+    say "The size of the region with total distance < $dist-limit is: $grid.area-with-distance-under($dist-limit).";
+}
+
+#| Process coordinates from a file
+multi sub MAIN(Str $inputfile where *.IO.f, Int :$dist-limit=10_000)
+{
+    MAIN($inputfile.IO.slurp.comb(/\d+/), :$dist-limit);
+}
+
+#| Process default coordinate file (aoc6.input)
+multi sub MAIN()
+{
+    MAIN(~$*PROGRAM.sibling('aoc6.input'));
+}
