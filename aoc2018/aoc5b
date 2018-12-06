@@ -1,0 +1,50 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+sub process(Str $polymer)
+{
+    constant @units = flat 'a'..'z', 'A'..'Z';
+    constant %opposite = hash @units Z=> @units.rotate(26);
+
+    my @c = $polymer.comb;
+    loop (my $i = 0; $i+1 < @c; $i++)
+    {
+        next if $i < 0;
+        if @c[$i+1] eq %opposite{@c[$i]} {
+            @c.splice($i,2);
+            $i -= 2;
+        }
+    }
+
+    return @c.join;
+}
+
+sub polymer-without(Str $polymer, Str $c)
+{
+    return $polymer.subst(/:i $c/, '', :g);
+}
+
+#| Process polymer input
+multi sub MAIN(Str $input is copy)
+{
+    my $output = process($input);
+    say "$output.chars() units left after reacting.";
+
+    my %removed = $input.lc.comb.sort.squish.map(-> $c { $c => process(polymer-without($output, $c)) });
+    my $shortest = %removed.min(*.value.chars);
+    say "$shortest.value().chars() units left after removing $shortest.key() and reacting.";
+}
+
+#| Process polymer input from a file
+multi sub MAIN(Str $inputfile where *.IO.f)
+{
+    MAIN($inputfile.IO.slurp.chomp);
+}
+
+#| Process default polymer file (aoc5.input)
+multi sub MAIN()
+{
+    MAIN(~$*PROGRAM.sibling('aoc5.input'));
+}
