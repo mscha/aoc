@@ -1,0 +1,68 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+grammar Claim
+{
+    rule TOP { <claim>+ }
+    rule claim { '#'<id> '@' <x>','<y>':' <w>'x'<h> }
+    token id { \d+ }
+    token x { \d+ }
+    token y { \d+ }
+    token w { \d+ }
+    token h { \d+ }
+}
+
+class Canvas
+{
+    has @.grid;
+    has $.dup-count = 0;
+    has %.is-perfect{Int};
+
+    method claim($id, $x, $y, $w, $h)
+    {
+        %!is-perfect{$id} = True;
+        for @!grid[$x ..^ $x+$w; $y ..^ $y+$h] -> $cell is rw {
+            $cell.push($id);
+            if $cell > 1 {
+                $!dup-count++ if $cell == 2;
+                %!is-perfect{$_} = False for @$cell;
+            }
+        }
+    }
+
+    method perfect-claims
+    {
+        return %!is-perfect.grep(*.value)».key.sort;
+    }
+}
+
+#| Process claims input
+multi sub MAIN(Str $input, Bool :v(:$verbose) = False)
+{
+    my $claims = Claim.parse($input) or die "Invalid claims list";
+    my $canvas = Canvas.new;
+    for $claims<claim> -> $c {
+        $canvas.claim(+$c<id>, +$c<x>, +$c<y>, +$c<w>, +$c<h>);
+        say "$c<id> $c<x>,$c<y> $c<w>x$c<h>: $canvas.dup-count() duplicates." if $verbose;
+    }
+
+    # Part 1
+    say "$canvas.dup-count() duplicates.";
+
+    # Part 2
+    say "Perfect claim(s): $canvas.perfect-claims().join(', ').";
+}
+
+#| Process claims input from a file
+multi sub MAIN(IO() $inputfile where *.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.slurp, :$verbose);
+}
+
+#| Process default claims file (aoc3.input)
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN($*PROGRAM.sibling('aoc3.input'), :$verbose);
+}
