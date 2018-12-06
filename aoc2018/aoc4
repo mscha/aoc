@@ -1,0 +1,99 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+#use Grammar::Tracer;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+grammar ReposeRecord
+{
+    rule TOP { <entry>+ }
+    rule entry { '['<yyyymmdd> <hh>':'<mm>']' [ <shift> | <sleep> | <wake> ] }
+
+    rule shift { 'Guard #' <id> 'begins shift' }
+    rule sleep { 'falls asleep' }
+    rule wake { 'wakes up' }
+
+    token yyyymmdd { \d ** 4 '-' \d ** 2 '-' \d ** 2 }
+    token hh { \d ** 2 }
+    token mm { \d ** 2 }
+    token id { \d+ }
+}
+
+class Schedule
+{
+    has $.on-duty;
+    has $.sleep-start;
+    has %.asleep{Int};
+
+    has Bool $.verbose = False;
+
+    # Actions for ReposeRecord parsing
+    method entry($/)
+    {
+        # Determine the starting minute of the timestamp.  If the time is 00:mm, this is
+        # simply mm, but if it's hh:mm with hh ≥ 1, we use 0, since we only care about the
+        # Midnight hour.
+        my $minute = $<hh> == 0 ?? +$<mm> !! 0;
+
+        # Shift start
+        with $<shift> {
+            say "$<yyyymmdd>T$<hh>:$<mm>: Shift starts for guard #$_<id>." if $!verbose;
+
+            $!on-duty = +$_<id>;
+            %!asleep{$!on-duty} //= [0 xx 60];
+        }
+
+        # Falling asleep
+        with $<sleep> {
+            say "$<yyyymmdd>T$<hh>:$<mm>: Guard #$!on-duty falls asleep." if $!verbose;
+
+            $!sleep-start = $minute;
+        }
+
+        # Waking up
+        with $<wake> {
+            say "$<yyyymmdd>T$<hh>:$<mm>: Guard #$!on-duty wakes up." if $!verbose;
+
+            %!asleep{$!on-duty}[$!sleep-start ..^ $minute]»++;
+        }
+    }
+
+    method sleepiest-guard
+    {
+        %!asleep.sort(*.value.sum).tail.key;
+    }
+
+    method sleepiest-minutes
+    {
+        %!asleep.map({ $_.key => $_.value.maxpairs.head }).Hash;
+    }
+}
+
+#| Process repose record input
+multi sub MAIN(*@input, Bool :v(:$verbose) = False)
+{
+    my $schedule = Schedule.new(:$verbose);
+    my $rr = ReposeRecord.parse(@input.sort.join("\n"), :actions($schedule)) or die "Invalid repose record input";
+
+    my $sleepiest-minutes = $schedule.sleepiest-minutes;
+    my $guard1 = $schedule.sleepiest-guard;
+    my $minute1 = $sleepiest-minutes{$guard1}.key;
+    say "Part 1: guard $guard1 × minute $minute1 = { $guard1 × $minute1 }";
+
+    my $guard2 = $sleepiest-minutes.sort(*.value.value).tail.key;
+    my $minute2 = $sleepiest-minutes{$guard2}.key;
+    say "Part 2: guard $guard2 × minute $minute2 = { $guard2 × $minute2 }";
+}
+
+#| Process repose record input from a file
+multi sub MAIN(IO() $inputfile where *.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.lines, :$verbose);
+}
+
+#| Process default repose record file (aoc4.input)
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN($*PROGRAM.sibling('aoc4.input'), :$verbose);
+}
