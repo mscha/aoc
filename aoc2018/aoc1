@@ -1,0 +1,37 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+multi sub MAIN(*@changes, Bool :v(:$verbose) = False)
+{
+    # Part 1
+    say @changes.sum;
+
+    # Part 2
+    my SetHash $seen .= new;
+    my $freq = 0;
+    $seen{$freq}++;
+    ITER:
+    for 1..∞ -> $iter {
+        say "Iteration $iter (frequency $freq) ..." if $verbose;
+        for @changes -> $c {
+            $freq += $c;
+            if $freq ∈ $seen {
+                say $freq;
+                last ITER;
+            }
+            $seen{$freq}++;
+        }
+    }
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.lines);
+}
+
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc1.input'));
+}
