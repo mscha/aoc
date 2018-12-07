@@ -1,0 +1,105 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+class Instructions
+{
+    has %.prereq;
+    has $.verbose = False;
+    has $.base-duration = 0;
+
+    method add-step($a, $b)
+    {
+        %!prereq{$b}{$a} = True;
+    }
+
+    method follow
+    {
+        my $steps = set (flat %!prereq.keys, %!prereq.values».keys);
+        gather while $steps {
+            my @avail-steps = $steps.keys.sort.grep: { %!prereq{$_}{$steps.keys}.none };
+            my $next = @avail-steps[0];
+            say "Steps remaining: $steps.keys().sort().join(); available: @avail-steps[].join(); taking $next." if $!verbose;
+            take $next;
+            $steps ∖= $next;
+        }
+    }
+
+    method duration($step)
+    {
+        $!base-duration + ord($step) - ord('A') + 1;
+    }
+
+    method parallel-construct($workers)
+    {
+        my $steps = set (flat %!prereq.keys, %!prereq.values».keys);
+        my $elapsed = 0;
+        my @working-on = '' xx $workers;
+        my @seconds-left;
+        my %started;
+        while $steps {
+            my $secs = @seconds-left.grep(* > 0).min;
+            if 0 < $secs < ∞ {
+                $elapsed += $secs;
+                $_ -= $secs for @seconds-left;
+            }
+            say "At $elapsed seconds:" if $!verbose;
+
+            for (^@working-on).grep({ @working-on[$_] && @seconds-left[$_] ≤ 0 }) -> $w {
+                say "  Worker $w completed @working-on[$w]." if $!verbose;
+                $steps ∖= @working-on[$w];
+                @working-on[$w] = '';
+            }
+
+            if $!verbose {
+                for @working-on.grep(?*, :kv) -> $w, $s {
+                    say "  Worker $w still working on $s, @seconds-left[$w] seconds remaining.";
+                }
+            }
+
+            my @avail-steps = $steps.keys.sort.grep: { !%started{$_} && %!prereq{$_}{$steps.keys}.none };
+            if @avail-steps {
+                my @free-workers = @working-on.grep(!*, :k);
+                say "  Steps remaining: $steps.keys().sort().join(); available: @avail-steps[].join()." if $!verbose;
+                say "  Free workers: @free-workers.join(', ')." if $!verbose;
+
+                for @free-workers Z @avail-steps -> ($w, $s) {
+                    @working-on[$w] = $s;
+                    @seconds-left[$w] = self.duration($s);
+                    %started{$s} = True;
+                    say "  Worker $w starts working on $s for @seconds-left[$w] seconds." if $!verbose;
+                }
+            }
+            else {
+                say "  Nothing left to do." if $!verbose;
+            }
+        }
+
+        return $elapsed;
+    }
+}
+
+#| Process steps
+multi sub MAIN(*@steps, Int :$workers=5, Int :$base-duration=60, Bool :v(:$verbose)=False)
+{
+    my $instructions = Instructions.new(:$base-duration, :$verbose);
+    for @steps -> $a, $b {
+        $instructions.add-step($a, $b);
+    }
+
+    say "Part 1: the correct order of steps is: $instructions.follow().join().";
+    say "Part 2: the construction takes $instructions.parallel-construct($workers) seconds.";
+}
+
+#| Process steps from a file
+multi sub MAIN(Str $inputfile where *.IO.f, Int :$workers=5, Int :$base-duration=60, Bool :v(:$verbose)=False)
+{
+    MAIN($inputfile.IO.slurp.comb(/«<[A..Z]>»/), :$workers, :$base-duration, :$verbose);
+}
+
+#| Process default steps file (aoc7.input)
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc7.input'), :$verbose);
+}
