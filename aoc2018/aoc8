@@ -1,0 +1,60 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+class Node
+{
+    has @.children;
+    has @.metadata;
+    has $.depth;
+
+    method from-list(Node:U: @input, Int :$depth=0)
+    {
+        my $node-count = @input.shift;
+        my $metadata-count = @input.shift;
+        my @children = Node.from-list(@input, :depth($depth+1)) xx $node-count;
+        my @metadata = @input.shift xx $metadata-count;
+        return Node.new(:@children, :@metadata, :$depth);
+    }
+
+    method total-metadata
+    {
+        return @!metadata.sum + @!children».total-metadata.sum;
+    }
+
+    method value
+    {
+        if @!children {
+            return @!children[@!metadata.grep(1 ≤ * ≤ @!children).map(* - 1)]».value.sum;
+        }
+        else {
+            return @!metadata.sum;
+        }
+    }
+
+    method Str { join("\n", flat ' ' x $!depth ~ '- ' ~ @!metadata.join(' '), @!children) }
+    method gist { self.Str }
+
+}
+
+#| Process nodes
+multi sub MAIN(*@input, Bool :v(:$verbose)=False)
+{
+    my $root = Node.from-list(@input);
+    say $root if $verbose;
+    say "The sum of all metadata entries is: $root.total-metadata().";
+    say "The value of the root node is: $root.value().";
+}
+
+#| Process nodes from a file
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose)=False)
+{
+    MAIN($inputfile.IO.words, :$verbose);
+}
+
+#| Process default nodes file (aoc8.input)
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc8.input'), :$verbose);
+}
