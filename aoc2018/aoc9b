@@ -12,7 +12,7 @@ class Marble
     method forward(Int $n = 1)
     {
         my $m = self;
-        $m .= next for $n;
+        $m .= next for ^$n;
         return $m;
     }
 
