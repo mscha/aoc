@@ -26,8 +26,8 @@ class Marble
     method insert(Int $value)
     {
         my $m = Marble.new(:$value, :next(self), :previous(self.previous));
+        $!previous.next = $m;
         $!previous = $m;
-        $m.previous.next = $m;
         return $m;
     }
 
