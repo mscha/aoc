@@ -1,0 +1,110 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+class Marble
+{
+    has Int $.value;
+    has Marble $.next is rw = self;
+    has Marble $.previous is rw = self;
+
+    method forward(Int $n = 1)
+    {
+        my $m = self;
+        $m .= next for $n;
+        return $m;
+    }
+
+    method reverse(Int $n = 1)
+    {
+        my $m = self;
+        $m .= previous for ^$n;
+        return $m;
+    }
+
+    method insert(Int $value)
+    {
+        my $m = Marble.new(:$value, :next(self.next), :previous(self));
+        $!next = $m;
+        $m.next.previous = $m;
+        return $m;
+    }
+
+    method remove
+    {
+        $!previous.next = $!next;
+        $!next.previous = $!previous;
+        return $!next;
+    }
+
+    method Numeric { self.value }
+
+    method Str
+    {
+        my $str = $!value;
+        loop (my $m = $!next; $m.value != $!value; $m .= next) {
+            $str ~= '-' ~ $m.value;
+        }
+        return $str;
+    }
+    method gist { *.say }
+}
+
+class MarbleGame
+{
+    has $.num-players;
+    has $.highest-marble;
+
+    has $!current = Marble.new(:value(0));
+    has $!count = 1;
+    has $!player = 0;
+    has @!scores = 0 xx $!num-players;
+
+    method play
+    {
+        for 1..$!highest-marble -> $marble {
+            if $marble %% 23 {
+                $!current .= reverse(7);
+                @!scores[$!player] += $marble + $!current;
+                $!current .= remove;
+                $!count--;
+            }
+            else {
+                $!current .= forward;
+                $!current .= insert($marble);
+                $!count++;
+            }
+            $!player = ($!player + 1) % $!num-players;
+        }
+    }
+
+    method winning-score
+    {
+        self.play if $!count < 2;
+        return @!scores.max;
+    }
+}
+
+#| Play marble game
+multi sub MAIN(Int $highest-marble is copy, Int $num-players)
+{
+    say "With $num-players players and $highest-marble marbles, the winning score is: ",
+        MarbleGame.new(:$num-players, :$highest-marble).winning-score;
+    $highest-marble ×= 100;
+    say "With $num-players players and $highest-marble marbles, the winning score is: ",
+        MarbleGame.new(:$num-players, :$highest-marble).winning-score;
+}
+
+#| Get game parameters from a file
+multi sub MAIN(Str $inputfile where *.IO.f)
+{
+    my ($num-players, $highest-marble) = $inputfile.IO.slurp.comb(/\d+/)».Int;
+    MAIN($highest-marble, $num-players);
+}
+
+#| Get game parameters from the default file (aoc9.input)
+multi sub MAIN()
+{
+    MAIN(~$*PROGRAM.sibling('aoc9.input'));
+}
