@@ -95,7 +95,7 @@ multi sub MAIN(Str $input, Bool :v(:$verbose)=False)
     # In other words, wait until the area of the grid is minimal.
     my $prev-area = ∞;
     my $area = $grid.area;
-    say "Startind area: $area" if $verbose;
+    say "Starting area: $area" if $verbose;
     while $area < $prev-area {
         $grid.forward;
         $prev-area = $area;
