@@ -92,8 +92,8 @@ multi sub MAIN(IO() $inputfile where *.f, Bool :v(:$verbose) = False)
     MAIN($inputfile.lines, :$verbose);
 }
 
-#| Process default repose record file (aoc4.input)
+#| Process default repose record file (aoc04.input)
 multi sub MAIN(Bool :v(:$verbose) = False)
 {
-    MAIN($*PROGRAM.sibling('aoc4.input'), :$verbose);
+    MAIN($*PROGRAM.sibling('aoc04.input'), :$verbose);
 }

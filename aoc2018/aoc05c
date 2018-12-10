@@ -3,13 +3,18 @@ use v6.c;
 
 $*OUT.out-buffer = False;   # Autoflush
 
-sub process(Str $polymer is copy)
+sub process(Str $polymer)
 {
-    constant @units = flat 'a'..'z', 'A'..'Z';
-    constant @pairs = @units Z~ @units.rotate(26);
-
-    while $polymer ~~ s:g/ ||@pairs // { }
-    return $polymer;
+    my @c = $polymer.ords;
+    loop (my $i = 0; $i+1 < @c; $i++)
+    {
+        next if $i < 0;
+        if @c[$i] +^ @c[$i+1] == 0x20 {
+            @c.splice($i,2);
+            $i -= 2;
+        }
+    }
+    return @c.chrs;
 }
 
 sub polymer-without(Str $polymer, Str $c)
@@ -34,8 +39,8 @@ multi sub MAIN(Str $inputfile where *.IO.f)
     MAIN($inputfile.IO.slurp.chomp);
 }
 
-#| Process default polymer file (aoc5.input)
+#| Process default polymer file (aoc05.input)
 multi sub MAIN()
 {
-    MAIN(~$*PROGRAM.sibling('aoc5.input'));
+    MAIN(~$*PROGRAM.sibling('aoc05.input'));
 }

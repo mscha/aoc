@@ -89,8 +89,8 @@ multi sub MAIN(Str $inputfile where *.IO.f, Int :$dist-limit=10_000)
     MAIN($inputfile.IO.slurp.comb(/\d+/), :$dist-limit);
 }
 
-#| Process default coordinate file (aoc6.input)
+#| Process default coordinate file (aoc06.input)
 multi sub MAIN()
 {
-    MAIN(~$*PROGRAM.sibling('aoc6.input'));
+    MAIN(~$*PROGRAM.sibling('aoc06.input'));
 }

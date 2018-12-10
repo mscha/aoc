@@ -61,8 +61,8 @@ multi sub MAIN(IO() $inputfile where *.f, Bool :v(:$verbose) = False)
     MAIN($inputfile.slurp, :$verbose);
 }
 
-#| Process default claims file (aoc3.input)
+#| Process default claims file (aoc03.input)
 multi sub MAIN(Bool :v(:$verbose) = False)
 {
-    MAIN($*PROGRAM.sibling('aoc3.input'), :$verbose);
+    MAIN($*PROGRAM.sibling('aoc03.input'), :$verbose);
 }

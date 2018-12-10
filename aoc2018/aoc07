@@ -98,8 +98,8 @@ multi sub MAIN(Str $inputfile where *.IO.f, Int :$workers=5, Int :$base-duration
     MAIN($inputfile.IO.slurp.comb(/«<[A..Z]>»/), :$workers, :$base-duration, :$verbose);
 }
 
-#| Process default steps file (aoc7.input)
+#| Process default steps file (aoc07.input)
 multi sub MAIN(Int :$workers=5, Int :$base-duration=60, Bool :v(:$verbose) = False)
 {
-    MAIN(~$*PROGRAM.sibling('aoc7.input'), :$workers, :$base-duration, :$verbose);
+    MAIN(~$*PROGRAM.sibling('aoc07.input'), :$workers, :$base-duration, :$verbose);
 }
