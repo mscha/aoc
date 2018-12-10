@@ -1,0 +1,123 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+#| Grammar for parsing the list of points
+grammar PointList
+{
+    rule TOP { <point>+ }
+    rule point { position '=<' <x> ',' <y> '>' velocity '=<' <dx> ',' <dy> '>' }
+    token x { '-'? \d+ }
+    token y { '-'? \d+ }
+    token dx { '-'? \d+ }
+    token dy { '-'? \d+ }
+}
+
+#| A single point with its position and velocity
+class Point
+{
+    has Int $.x;
+    has Int $.y;
+    has Int $.dx;
+    has Int $.dy;
+
+    #| Move a point 1 second forward in time
+    method forward {
+        $!x += $!dx;
+        $!y += $!dy;
+    }
+
+    #| Move a point 1 second backward in time
+    method reverse
+    {
+        $!x -= $!dx;
+        $!y -= $!dy;
+    }
+}
+
+#| A list of points in space
+class Grid
+{
+    has Point @.points;
+    has Int $.elapsed = 0;
+
+    #| Used as action by grammar PointList
+    method point($/)
+    {
+        @!points.push: Point.new(:x(+$<x>), :y(+$<y>), :dx(+$<dx>), :dy(+$<dy>));
+    }
+
+    #| The current area of the bounding box of all points in the grid
+    method area
+    {
+        return @!points».x.minmax × @!points».y.minmax;
+    }
+
+    #| Move all points 1 second forward in time
+    method forward
+    {
+        @!points».forward;
+        $!elapsed++;
+    }
+
+    #| Move all points 1 second backward in time
+    method reverse
+    {
+        @!points».reverse;
+        $!elapsed--;
+    }
+
+    #| String representation of the grid
+    method Str
+    {
+        my $x-range = @!points».x.minmax;
+        my $y-range = @!points».y.minmax;
+        my $x0 = $x-range.head;
+        my $y0 = $y-range.head;
+        my @cells = [['░' xx $x-range] xx $y-range];
+        for @!points -> $p {
+            @cells[$p.y - $y0;$p.x - $x0] = '█';
+        }
+        return @cells».join.join("\n");
+    }
+    method gist { self.Str }
+}
+
+#| Process points
+multi sub MAIN(Str $input, Bool :v(:$verbose)=False)
+{
+    # Parse the list of points
+    my $grid = Grid.new;
+    PointList.parse($input, :actions($grid)) or die "Invalid input!";
+
+    # Assume that the message appears when the points are closest together.
+    # In other words, wait until the area of the grid is minimal.
+    my $prev-area = ∞;
+    my $area = $grid.area;
+    while $area < $prev-area {
+        say "Current area: $area" if $verbose;
+        $grid.forward;
+        $prev-area = $area;
+        $area = $grid.area;
+    }
+
+    # We moved one second too far, so back up.
+    $grid.reverse;
+
+    # Print the message, and the elapsed time.
+    say $grid;
+    say "Time taken: $grid.elapsed() seconds.";
+}
+
+#| Process points from a file
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose)=False)
+{
+    MAIN($inputfile.IO.slurp, :$verbose);
+}
+
+#| Process default points file (aoc10.input)
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc10.input'), :$verbose);
+}
