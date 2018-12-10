@@ -48,7 +48,7 @@ class Marble
         }
         return $str;
     }
-    method gist { *.say }
+    method gist { self.Str }
 }
 
 class MarbleGame
