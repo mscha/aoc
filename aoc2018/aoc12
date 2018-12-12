@@ -1,0 +1,114 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+grammar PlantSpec
+{
+    rule TOP { 'initial state:' <initial> <transform>+ }
+
+    token initial { <state>+ }
+
+    rule transform { <before> '=>' <after> }
+    token before { <state> ** 5 }
+    token after { <state> }
+
+    token state { <[.#]> }
+}
+
+class PlantRow
+{
+    has @.row;
+    has $.start is rw;
+    has %!transform;
+
+    # Actions for PlantSpec grammar
+    method initial($/) {
+        @!row = $/.comb;
+        $!start = 0;
+    }
+    method transform($/)
+    {
+        %!transform{~$<before>} = ~$<after>;
+    }
+
+    # Process a plant generation
+    method generate
+    {
+        # Add four empty pots to the left and right of the row
+        @!row = flat '.' xx 4, @!row, '.' xx 4;
+
+        # Transform each overlapping 5 pot section
+        @!row = @!row.rotor(5=>-4)».join.map({ %!transform{$_} // '.' });
+
+        # We ended up adding two pots to the left and right
+        $!start -= 2;
+
+        # Remove empty pots from start and end
+        while @!row.head eq '.' {
+            @!row.shift;
+            $!start++;
+        }
+        while @!row.tail eq '.' {
+            @!row.pop;
+        }
+    }
+
+    # The sum of the plant numbers
+    method plant-sum
+    {
+        return @!row.grep('#', :k).map(* + $!start).sum;
+    }
+
+    # Stringification
+    method pots { @!row.join() }
+    method Str { "[$!start] @!row.join()" }
+    method gist { self.Str }
+}
+
+#| Process plants
+multi sub MAIN(Str $input, Bool :v(:$verbose)=False)
+{
+    my $row = PlantRow.new;
+    PlantSpec.parse($input, :actions($row));
+
+    say "Initial: $row" if $verbose;
+
+    # Part 1: 20 iterations
+    for 1..20 -> $g {
+        $row.generate;
+        say "Generation $g: $row" if $verbose;
+    }
+    say "After 20 iterations, the sum of the plant numbers is: $row.plant-sum()";
+
+    # Part 2: 50 billion generations.
+    # This is obviously too much too calculate, so keep generating until it stabilizes
+    my $prev-pots = $row.pots;
+    my $prev-start = $row.start;
+    for 20 ^.. 50_000_000_000 -> $g {
+        $row.generate;
+        say "Generation $g: $row" if $verbose;
+        if $row.pots eq $prev-pots {
+            # The sequence of pots remained the same, only the starting position changed.
+            # So, we can shortcut the remaining generations by simply adjusting the
+            # starting position.
+            $row.start += ($row.start - $prev-start) × (50_000_000_000 - $g);
+            last;
+        }
+        $prev-pots = $row.pots;
+        $prev-start = $row.start;
+    }
+    say "After 50 billion iterations, the sum of the plant numbers is: $row.plant-sum()";
+}
+
+#| Process plants from a file
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose)=False)
+{
+    MAIN($inputfile.IO.slurp, :$verbose);
+}
+
+#| Process default plants file (aoc12.input)
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc12.input'), :$verbose);
+}
