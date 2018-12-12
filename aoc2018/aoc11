@@ -1,0 +1,50 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+class PowerGrid
+{
+    has $.serial;
+    has @!level;
+    has @!summed;
+
+    submethod TWEAK
+    {
+        @!summed[0] = [0 xx 301];
+        for 1..300 -> int $x {
+            @!summed[$x;0] = 0;
+            for 1..300 -> int $y {
+                @!level[$x;$y] = (($x+10)×$y+$!serial)×($x+10) div 100 % 10 - 5;
+                @!summed[$x;$y] = @!level[$x;$y] + @!summed[$x;$y-1] + @!summed[$x-1;$y] - @!summed[$x-1;$y-1];
+            }
+        }
+    }
+
+    method area(Int $x, Int $y, Int $size)
+    {
+        @!summed[$x+$size-1;$y+$size-1] + @!summed[$x-1;$y-1] - @!summed[$x+$size-1;$y-1] - @!summed[$x-1;$y+$size-1];
+    }
+
+    method best-square(Int $size)
+    {
+        my ($x,$y) = ((1 .. 300-$size+1) X (1 .. 300-$size+1)).max(-> ($x,$y) { self.area($x,$y, $size) });
+        return $x, $y, self.area($x, $y, $size);
+    }
+}
+
+#| Find the optimal square in a power grid
+sub MAIN(Int $serial = 9424)
+{
+    my $grid = PowerGrid.new(:$serial);
+
+    # Part 1
+    my ($x, $y, $level) = $grid.best-square(3);
+    say "The best square with size 3 is: $x,$y with total power $level";
+
+    my @best-squares = (1..300).map: { $grid.best-square($^size) };
+    my $best = @best-squares.pairs.max(*.value[2]);
+    my $size = $best.key + 1;
+    ($x, $y, $level) = $best.value;
+    say "The best square overall has size $size and is: $x,$y with total power $level";
+}
