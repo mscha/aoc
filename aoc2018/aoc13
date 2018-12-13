@@ -115,7 +115,7 @@ class Track
                 @!collisions.append($c.pos);
             }
 
-            # Turn the card based on the resulting grid cell
+            # Turn the cart based on the resulting grid cell
             $c.turn(@!grid[$c.y;$c.x]);
         }
     }
