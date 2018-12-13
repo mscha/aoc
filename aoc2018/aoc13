@@ -103,7 +103,7 @@ class Track
         return Track.new(:grid($input.comb(/\N+/)».comb».Array));
     }
 
-    method move
+    method move-carts
     {
         for @!carts.sort(&infix:<cmp>) -> $c {
             # Move the cart
@@ -129,7 +129,6 @@ class Track
     method cart-list { "Carts:\n" ~ @!carts.map({"- $_"}).join("\n") };
     method Str { @!grid».join.join("\n") }
     method gist { self.Str }
-
 }
 
 #| Process mine cart track
@@ -141,7 +140,7 @@ multi sub MAIN(Str $input, Bool :v(:$verbose)=False)
 
     # Part 1
     while !$track.collisions {
-        $track.move;
+        $track.move-carts;
         say $track.cart-list if $verbose;
         $track.remove-collided-carts;
     }
@@ -149,7 +148,7 @@ multi sub MAIN(Str $input, Bool :v(:$verbose)=False)
 
     # Part 2
     while $track.carts ≥ 2 {
-        $track.move;
+        $track.move-carts;
         say $track.cart-list if $verbose;
         $track.remove-collided-carts;
     }
