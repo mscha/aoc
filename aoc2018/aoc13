@@ -1,0 +1,174 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+enum Direction <N E S W>;
+enum Turn (:left(-1), :straight(0), :right(1));
+
+# Mine cart
+class Cart
+{
+    has Int $.num;
+    has Int $.x;
+    has Int $.y;
+    has Direction $.dir;
+    has Turn $.next-turn = left;
+    has Bool $.collided is rw = False;
+
+    method move
+    {
+        return if $!collided;
+        given $!dir {
+            $!y-- when N;
+            $!x++ when E;
+            $!y++ when S;
+            $!x-- when W;
+        }
+    }
+
+    method turn(Str $cell)
+    {
+        return if $!collided;
+        given $cell {
+            when '/' {
+                $!dir = (E, N, W, S)[$!dir];
+            }
+            when '\\' {
+                $!dir = (W, S, E, N)[$!dir];
+            }
+            when '+' {
+                $!dir = Direction(($!dir + $!next-turn) % 4);
+                $!next-turn = Turn(($!next-turn + 2) % 3 - 1);
+            }
+        }
+    }
+
+    # Stringification
+    method pos { "$!x,$!y" }
+    method Str
+    {
+        if $!collided {
+            return "cart $!num at $!x,$!y, collided.";
+        }
+        else {
+            return "cart $!num at $!x,$!y, moving $.dir, next turn $!next-turn.";
+        }
+    }
+    method gist { self.Str }
+}
+
+# Compare two carts, first by y coordinate, then by x coordinate
+multi sub infix:<cmp>(Cart $a, Cart $b) {
+    $a.y cmp $b.y || $a.x cmp $b.x
+}
+
+# Mine cart track
+class Track
+{
+    has @.grid;
+    has Cart @.carts;
+    has @.collisions;
+
+    submethod TWEAK
+    {
+        # Scan the grid for carts and extract them
+        my $num = 0;
+        for ^@!grid -> $y {
+            for ^@!grid[0] -> $x {
+                given @!grid[$y;$x] {
+                    when '^' {
+                        @!carts.append: Cart.new(:num(++$num), :$x, :$y, :dir(N));
+                        $_ = '|';
+                    }
+                    when '>' {
+                        @!carts.append: Cart.new(:num(++$num), :$x, :$y, :dir(E));
+                        $_ = '-';
+                    }
+                    when 'v' {
+                        @!carts.append: Cart.new(:num(++$num), :$x, :$y, :dir(S));
+                        $_ = '|';
+                    }
+                    when '<' {
+                        @!carts.append: Cart.new(:num(++$num), :$x, :$y, :dir(W));
+                        $_ = '-';
+                    }
+                }
+            }
+        }
+    }
+
+    method parse(Track:U: Str $input)
+    {
+        return Track.new(:grid($input.comb(/\N+/)».comb».Array));
+    }
+
+    method move
+    {
+        for @!carts.sort(&infix:<cmp>) -> $c {
+            # Move the cart
+            $c.move;
+
+            # Detect collision
+            if (my @coll = @!carts.grep(*.pos eq $c.pos)) ≥ 2 {
+                $_.collided = True for @coll;
+                @!collisions.append($c.pos);
+            }
+
+            # Turn the card based on the resulting grid cell
+            $c.turn(@!grid[$c.y;$c.x]);
+        }
+    }
+
+    method remove-collided-carts
+    {
+        @!carts .= grep(!*.collided);
+    }
+
+    method cart-list { "Carts:\n" ~ @!carts.map({"- $_"}).join("\n") };
+
+    method Str { @!grid».join.join("\n") }
+    method gist { self.Str }
+
+}
+
+#| Process mine cart track
+multi sub MAIN(Str $input, Bool :v(:$verbose)=False)
+{
+    my $track = Track.parse($input);
+    say $track if $verbose;
+    say $track.cart-list if $verbose;
+
+    # Part 1
+    while !$track.collisions {
+        $track.move;
+        say $track.cart-list if $verbose;
+        $track.remove-collided-carts;
+    }
+    say "The location of the first crash is: $track.collisions()[0].";
+
+    # Part 2
+    while $track.carts ≥ 2 {
+        $track.move;
+        say $track.cart-list if $verbose;
+        $track.remove-collided-carts;
+    }
+    if $track.carts {
+        say "After the final collision, there is one cart left at $track.carts()[0].pos().";
+    }
+    else {
+        say "There are no carts left after the final collision!";
+    }
+}
+
+#| Process mine cart track from a file
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose)=False)
+{
+    MAIN($inputfile.IO.slurp, :$verbose);
+}
+
+#| Process default mine cart track file (aoc13.input)
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc13.input'), :$verbose);
+}
