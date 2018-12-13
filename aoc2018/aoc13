@@ -125,8 +125,8 @@ class Track
         @!carts .= grep(!*.collided);
     }
 
+    # Stringification
     method cart-list { "Carts:\n" ~ @!carts.map({"- $_"}).join("\n") };
-
     method Str { @!grid».join.join("\n") }
     method gist { self.Str }
 
