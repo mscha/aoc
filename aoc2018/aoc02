@@ -5,12 +5,27 @@ use v6.c;
 
 $*OUT.out-buffer = False;   # Autoflush
 
+sub is-neighbour($a, $b)
+{
+    ($a.comb Z $b.comb).grep({ $_[0] ne $_[1] }) == 1;
+}
+
+sub common-string($a, $b)
+{
+    ($a.comb Z $b.comb).grep({ $_[0] eq $_[1] })»[0].join;
+}
+
 multi sub MAIN(*@ids, Bool :v(:$verbose) = False)
 {
+    # Part one
     my @counts = @ids.map(*.comb.Bag.invert.Hash);
     my $twos = +@counts.grep({$_<2>});
     my $threes = +@counts.grep({$_<3>});
     say "$twos × $threes = { $twos × $threes }";
+
+    # Part two
+    my ($a, $b) = @ids.combinations(2).first(-> ($a, $b) { is-neighbour($a, $b) });
+    say "$a & $b => { common-string($a, $b) }";
 }
 
 multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
