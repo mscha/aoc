@@ -1,6 +1,8 @@
 #!/usr/bin/env perl6
 use v6.c;
 
+# Advent of Code 2018 day 5 -- https://adventofcode.com/2018/day/5
+
 $*OUT.out-buffer = False;   # Autoflush
 
 sub process(Str $polymer is copy)

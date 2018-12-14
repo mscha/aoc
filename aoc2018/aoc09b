@@ -1,6 +1,8 @@
 #!/usr/bin/env perl6
 use v6.c;
 
+# Advent of Code 2018 day 9 -- https://adventofcode.com/2018/day/9
+
 $*OUT.out-buffer = False;   # Autoflush
 
 class Marble

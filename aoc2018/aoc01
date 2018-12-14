@@ -1,6 +1,8 @@
 #!/usr/bin/env perl6
 use v6.c;
 
+# Advent of Code 2018 day 1 -- https://adventofcode.com/2018/day/1
+
 $*OUT.out-buffer = False;   # Autoflush
 
 multi sub MAIN(*@changes, Bool :v(:$verbose) = False)
