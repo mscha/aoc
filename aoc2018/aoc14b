@@ -2,15 +2,13 @@
 use v6.c;
 
 # Advent of Code 2018 day 14 -- https://adventofcode.com/2018/day/14
+#
+# This version stores recipes in a string instead of an array, and _should_
+# be a bit more efficient that the array-based version (aoc14).
+# Unfortunately, it core dumps after about 11 minutes on Rakudo 2018.10, for
+# unknown reasons.
 
 $*OUT.out-buffer = False;   # Autoflush
-
-###
-### This version stores recipes in a string instead of an array, and _should_
-### be a bit more efficient that the array-based version (aoc14).
-### Unfortunately, it core dumps after about 11 minutes on Rakudo 2018.10, for
-### unknown reasons.
-###
 
 class RecipeGenerator
 {
