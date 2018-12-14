@@ -5,47 +5,52 @@ $*OUT.out-buffer = False;   # Autoflush
 
 class RecipeGenerator
 {
-    has @.recipes;
+    has Int @.recipes;
+    has Int $.recipe-count = +@!recipes;
+
+    has Str $.target;
+    has Seq $.target-digits = $!target.comb».Int.Seq;
+    has Int $target-length = +$!target-digits;
+    has Int $.target-last = $!target-digits.tail;
+    has Bool $.target-found = False;
+    has Int $.target-pos = -1;
+
     has $.first-pos = 0;
     has $.second-pos = 1;
 
     method generate
     {
-        my @new = @!recipes[$!first-pos,$!second-pos].sum.comb».Int;
-        @!recipes.append(@new);
-        $!first-pos = ($!first-pos + @!recipes[$!first-pos] + 1) % @!recipes;
-        $!second-pos = ($!second-pos + @!recipes[$!second-pos] + 1) % @!recipes;
+        # We have one or two new recipes, loop through them (or it) and append
+        for @!recipes[$!first-pos,$!second-pos].sum.comb».Int -> $new {
+            @!recipes.append($new);
+            $!recipe-count++;
 
-        return +@new;
+            # Check if the target has just been met, but only if the new digit is correct
+            self.check-target if $new == $!target-last;
+        }
+
+        # Move both elves to the new position
+        $!first-pos = ($!first-pos + @!recipes[$!first-pos] + 1) % $!recipe-count;
+        $!second-pos = ($!second-pos + @!recipes[$!second-pos] + 1) % $!recipe-count;
     }
 
-    method look-for(@target, Int $final = 0)
+    method check-target
     {
-        my $end = @!recipes - @target;
-        my $start = $final > 0 ?? $end - $final + 1 !! 0;
-        START:
-        for $start .. $end -> $i {
-            for ^@target -> $j {
-                next START unless @!recipes[$i+$j] == @target[$j];
-            }
-            return $i;
+        return if $!target-found;
+        if @!recipes.tail($!target-length) eqv $!target-digits {
+            $!target-found = True;
+            $!target-pos = $!recipe-count - $!target-digits;
         }
-        return -1;
     }
 }
 
-#| Find the optimal square in a power grid
+#| Generate recipes
 sub MAIN(Int $input = 765071, Int $first = 3, Int $second = 7)
 {
-    my $gen = RecipeGenerator.new(:recipes($first,$second));
-    $gen.generate until $gen.recipes ≥ $input+10;
+    my $gen = RecipeGenerator.new(:recipes($first,$second), :target(~$input));
+    $gen.generate until $gen.recipe-count ≥ $input+10;
     say "The 10 recipes after the first $input are: $gen.recipes()[$input ..^ $input+10].join().";
 
-    my @target = $input.comb».Int;
-    my $index = $gen.look-for(@target);
-    while $index < 0 {
-        my $new = $gen.generate;
-        $index = $gen.look-for(@target, $new);
-    }
-    say "$input first appears after $index recipes.";
+    $gen.generate until $gen.target-found;
+    say "$input first appears after $gen.target-pos() recipes.";
 }
