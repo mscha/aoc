@@ -1,0 +1,57 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+class RecipeGenerator
+{
+    has Str $.recipes;
+    has Int $.recipe-count = $!recipes.chars;
+
+    has Str $.target;
+    has Int $target-length = $!target.chars;
+    has Str $.target-last = $!target.substr(*-1);
+    has Bool $.target-found = False;
+    has Int $.target-pos = -1;
+
+    has $.first-pos = 0;
+    has $.second-pos = 1;
+
+    method recipe(Int $index) { +$!recipes.substr($index,1) }
+
+    method generate
+    {
+        # We have one or two new recipes, loop through them (or it) and append
+        for (self.recipe($!first-pos) + self.recipe($!second-pos)).comb -> $new {
+            $!recipes ~= $new;
+            $!recipe-count++;
+
+            # Check if the target has just been met, but only if the new digit is correct
+            self.check-target if $new eq $!target-last;
+        }
+
+        # Move both elves to the new position
+        $!first-pos = ($!first-pos + self.recipe($!first-pos) + 1) % $!recipe-count;
+        $!second-pos = ($!second-pos + self.recipe($!second-pos) + 1) % $!recipe-count;
+    }
+
+    method check-target
+    {
+        return if $!target-found || $!target-length > $!recipe-count;
+        if $!recipes.substr(* - $!target-length) eq $!target {
+            $!target-found = True;
+            $!target-pos = $!recipe-count - $!target-length;
+        }
+    }
+}
+
+#| Generate recipes
+sub MAIN(Int $input = 765071, Int $first = 3, Int $second = 7)
+{
+    my $gen = RecipeGenerator.new(:recipes($first~$second), :target(~$input));
+    $gen.generate until $gen.recipe-count ≥ $input+10;
+    say "The 10 recipes after the first $input are: $gen.recipes().substr($input, 10).";
+
+    $gen.generate until $gen.target-found;
+    say "$input first appears after $gen.target-pos() recipes.";
+}
