@@ -1,0 +1,51 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+class RecipeGenerator
+{
+    has @.recipes;
+    has $.first-pos = 0;
+    has $.second-pos = 1;
+
+    method generate
+    {
+        my @new = @!recipes[$!first-pos,$!second-pos].sum.comb».Int;
+        @!recipes.append(@new);
+        $!first-pos = ($!first-pos + @!recipes[$!first-pos] + 1) % @!recipes;
+        $!second-pos = ($!second-pos + @!recipes[$!second-pos] + 1) % @!recipes;
+
+        return +@new;
+    }
+
+    method look-for(@target, Int $final = 0)
+    {
+        my $end = @!recipes - @target;
+        my $start = $final > 0 ?? $end - $final + 1 !! 0;
+        START:
+        for $start .. $end -> $i {
+            for ^@target -> $j {
+                next START unless @!recipes[$i+$j] == @target[$j];
+            }
+            return $i;
+        }
+        return -1;
+    }
+}
+
+#| Find the optimal square in a power grid
+sub MAIN(Int $input = 765071, Int $first = 3, Int $second = 7)
+{
+    my $gen = RecipeGenerator.new(:recipes($first,$second));
+    $gen.generate until $gen.recipes ≥ $input+10;
+    say "The 10 recipes after the first $input are: $gen.recipes()[$input ..^ $input+10].join().";
+
+    my @target = $input.comb».Int;
+    my $index = $gen.look-for(@target);
+    while $index < 0 {
+        my $new = $gen.generate;
+        $index = $gen.look-for(@target, $new);
+    }
+    say "$input first appears after $index recipes.";
+}
