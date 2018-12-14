@@ -37,8 +37,8 @@ class RecipeGenerator
 
     method check-target
     {
-        return if $!target-found || $!target-length > $!recipe-count;
-        if $!recipes.substr(* - $!target-length) eq $!target {
+        return if $!target-found;
+        if $!recipes.ends-with($!target) {
             $!target-found = True;
             $!target-pos = $!recipe-count - $!target-length;
         }
