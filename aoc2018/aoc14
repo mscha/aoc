@@ -39,7 +39,7 @@ class RecipeGenerator
         return if $!target-found;
         if @!recipes.tail($!target-length) eqv $!target-digits {
             $!target-found = True;
-            $!target-pos = $!recipe-count - $!target-digits;
+            $!target-pos = $!recipe-count - $!target-length;
         }
     }
 }
