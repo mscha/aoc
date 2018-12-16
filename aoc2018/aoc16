@@ -37,9 +37,9 @@ class WristDevice
     # Actions for grammar WristDeviceInstructions
     method sample($/)
     {
-        @!samples.push: { :before($/<registers>[0]<n>».Int),
-                          :input($/<input><n>».Int),
-                          :after($/<registers>[1]<n>».Int) };
+        @!samples.push: { :before($<registers>[0]<n>».Int),
+                          :input($<input><n>».Int),
+                          :after($<registers>[1]<n>».Int) };
     }
     method program-line($/)
     {
