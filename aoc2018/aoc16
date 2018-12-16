@@ -12,8 +12,8 @@ grammar WristDeviceInstructions
     rule TOP { <sample>+ <test-program> }
 
     rule sample { 'Before:' '[' <registers> ']'
-                       <input>
-                       'After:' '[' <registers> ']' }
+                  <input>
+                  'After:' '[' <registers> ']' }
     rule registers { <n> ** 4 % ',' }
     rule input { <n> ** 4 }
 
