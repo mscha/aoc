@@ -1,0 +1,336 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+# Advent of Code 2018 day 15 -- https://adventofcode.com/2018/day/15
+
+$*OUT.out-buffer = False;   # Autoflush
+
+enum Species <Elf Goblin>;
+
+class Cave { ... }  # Forward declaration so we can use Cave in Unit
+
+# Utility function: all neighbour squares of a square (y,x)
+sub neighbours(Int $y, Int $x)
+{
+    return (($y-1,$x), ($y,$x-1), ($y,$x+1), ($y+1,$x));
+}
+
+
+# Elf or goblin unit
+class Unit
+{
+    has Species $.species;
+    has Int $.x;
+    has Int $.y;
+    has Int $.hit-points = 200;
+    has Int $.attack-power = 3;
+
+    has Cave $.cave;
+    has Bool $.alive = True;
+
+    has Bool $.verbose = $!cave ?? $!cave.verbose !! False;
+
+    # Hit this unit with the specified power
+    method hit($power)
+    {
+        $!hit-points -= $power;
+        if $!hit-points ≤ 0 {
+            # R.I.P. 
+            $!alive = False;
+            $!cave.grid[$!y;$!x] = '.';
+        }
+    }
+
+    # Find all potential targets of this unit
+    method targets
+    {
+        return $!cave.units.grep({ .species != $!species && .alive });
+    }
+
+    # Find all potential targets that are neighbours
+    method neighbour-targets
+    {
+        return self.targets.grep({ abs(.x - $!x) + abs(.y - $!y) == 1 });
+    }
+
+    # Find empty squares that are in range of this unit
+    method squares-in-range
+    {
+        return neighbours($!y,$!x).grep(-> ($y,$x) { $!cave[$y;$x] eq '.' }).Slip;
+    }
+
+    # Calculate a distance map for this unit
+    method distance-map
+    {
+        my @dist = [∞ xx $!cave.width] xx $!cave.height;
+
+        # Starting at the current square
+        @dist[$!y;$!x] = 0;
+        my @prev = ($!y,$!x),;
+
+        # For distance d = 1, 2, ...
+        for 1..∞ -> $d {
+            # Find neighbours of squares with distance d-1 that don't have a distance yet
+            # These squares have distance d
+            my @curr;
+            for @prev -> ($y0,$x0) {
+                for (neighbours($y0,$x0)) -> ($y1,$x1) {
+                    if @dist[$y1;$x1] == ∞ && $!cave[$y1;$x1] eq '.' {
+                        @dist[$y1;$x1] = $d;
+                        @curr.push: ($y1,$x1);
+                    }
+                }
+            }
+
+            # We're done if we haven't found any squares with this distance
+            last unless @curr;
+            @prev = @curr;
+        }
+        return @dist;
+    }
+
+    # Perform a turn
+    method turn
+    {
+        say '* ', self if $!verbose;
+
+        # If we don't sit next to a target, move
+        my @neighbours = self.neighbour-targets;
+        if !@neighbours {
+            self.move;
+            @neighbours = self.neighbour-targets;
+        }
+
+        # If we're (now) sitting next to a target, attack the weakest one
+        if @neighbours {
+            self.attack(@neighbours.sort(&cmp-hp)[0]);
+        }
+    }
+
+    # Attack a unit
+    method attack(Unit $target)
+    {
+        say " - attack $target" if $!verbose;
+        $target.hit($!attack-power);
+        say "     ---> $target" if $!verbose;
+    }
+
+    # Move a unit towards the closest target
+    method move
+    {
+        # Find reachable squares and their distances
+        my @dist = self.distance-map;
+
+        # Find accessible squares in range of a target, and take the (first) one with the minimum distance
+        # If there aren't any, we don't move
+        my @in-range = self.targets».squares-in-range.sort.squish.grep({ @dist[.[0];.[1]] < ∞ });
+        unless @in-range {
+            say " - no moves possible" if $!verbose;
+            return;
+        }
+        my $target-square = @in-range.min({ @dist[.[0];.[1]] });
+
+        # Find the first move that brings the unit closer to the target, and take it
+        my $next = self.squares-in-range.min({ $!cave.distance(.[0], .[1], $target-square[0], $target-square[1]) });
+        say " - move to ($next.join(',')) [towards ($target-square.join(','))]" if $!verbose;
+        $!cave.grid[$!y;$!x] = '.';
+        ($!y,$!x) = @$next;
+        $!cave.grid[$!y;$!x] = self.char;
+    }
+
+    # Stringification
+    method char { $!species.substr(0,1) }
+    method Str
+    {
+        if $!alive {
+            return "$!species at ($!y,$!x) with $!hit-points hit points";
+        }
+        else {
+            return "$!species at ($!y,$!x) R.I.P.";
+        }
+    }
+    method gist { self.Str }
+}
+
+# Unit comparison functions for sorting
+sub cmp-pos($a, $b) { $a.y <=> $b.y || $a.x <=> $b.x }
+sub cmp-hp($a, $b) { $a.hit-points <=> $b.hit-points || $a.y <=> $b.y || $a.x <=> $b.x }
+
+
+# Cave with elf/goblin units
+class Cave
+{
+    has @.grid;
+    has Int $.elf-power = 3;
+    has Int $.goblin-power = 3;
+
+    has Int $.width = +@!grid[0];
+    has Int $.height = +@!grid;
+    has Unit @.units;
+    has Int $.round-count = 0;
+
+    has Bool $.verbose = False;
+
+    submethod TWEAK
+    {
+        # Find units on the grid
+        for ^@!grid -> $y {
+            for ^@!grid[0] -> $x {
+                given @!grid[$y;$x] {
+                    @!units.append: Unit.new(:species(Elf), :$x, :$y, :cave(self),
+                                             :attack-power($!elf-power)) when 'E';
+                    @!units.append: Unit.new(:species(Goblin), :$x, :$y, :cave(self),
+                                             :attack-power($!goblin-power)) when 'G';
+                }
+            }
+        }
+    }
+
+    # Allow subscripting $cave[y;x]
+    method AT-POS($y,$x) is rw { return-rw @!grid[$y;$x] }
+
+    # Calculate the distance between points (y1,x1) and (y2,x2)
+    method distance(Int $y1, Int $x1, Int $y2, Int $x2)
+    {
+        return 0 if $y1 == $y2 && $x1 == $x2;   # We're already here
+
+        my @dist = [∞ xx $!width] xx $!height;
+
+        # Starting at (y1,x1)
+        @dist[$y1;$x1] = 0;
+        my @prev = ($y1,$x1),;
+
+        # For distance d = 1, 2, ...
+        for 1..∞ -> $d {
+            # Find neighbours of squares with distance d-1 that don't have a distance yet
+            # These squares have distance d
+            my @curr;
+            for @prev -> ($y0,$x0) {
+                for (neighbours($y0,$x0)) -> ($y,$x) {
+                    if @dist[$y;$x] == ∞ && @!grid[$y;$x] eq '.' {
+                        # If we've reached (y2,x2), we're done.
+                        return $d if $y == $y2 && $x == $x2;
+
+                        @dist[$y;$x] = $d;
+                        @curr.push: ($y,$x);
+                    }
+                }
+            }
+
+            # We're done if we haven't found any squares with this distance
+            last unless @curr;
+            @prev = @curr;
+        }
+
+        # If we're still here, we haven't reached (y2,x2)
+        return ∞;
+    }
+
+    # Play a round: let all units move and attack
+    method round
+    {
+        $!round-count++;
+        say "Round $!round-count" if $!verbose;
+        for @!units.sort(&cmp-pos) -> $u {
+            next unless $u.alive;
+            if self.finished {
+                say "Can't finish round, no more targets" if $!verbose;
+                $!round-count--;
+                return;
+            }
+            $u.turn;
+        }
+    }
+
+    # Play rounds until there are no more targets left
+    method play
+    {
+        while !self.finished {
+            self.round;
+            say self if $!verbose;
+        }
+    }
+
+    # Play rounds until there are no more targets left, or until an elf dies
+    # Returns true if we finished the game, false if an elf died before this happened
+    method play-until-elf-dies
+    {
+        while !self.finished {
+            return False if @!units.grep({ .species == Elf && !.alive });
+            self.round;
+            say self if $!verbose;
+        }
+        return ! @!units.grep({ .species == Elf && !.alive });
+    }
+
+    method finished { @!units.grep(*.alive)».species.unique == 1 }
+    method winner { @!units.grep(*.alive)».species.unique[0] }
+    method total-hit-points { @!units.grep(*.alive)».hit-points.sum }
+    method outcome { $!round-count × self.total-hit-points }
+
+    # Stringification
+    method Str { @!grid».join.join("\n") }
+    method gist { self.Str }
+}
+
+#| Process cave combat
+multi sub MAIN(Str $input, Bool :v(:$verbose)=False)
+{
+    my @grid = $input.comb(/\N+/)».comb».Array;
+
+    # Part one
+    my $cave = Cave.new(:@grid, :$verbose);
+    say $cave if $verbose;
+    $cave.play;
+    if $verbose {
+        say "Final units:";
+        say "* $_" for $cave.units;
+    }
+    say "Combat ends after $cave.round-count() full rounds";
+    say "$cave.winner() team wins with $cave.total-hit-points() total hit points left";
+    say "Outcome: $cave.outcome()";
+    say '';
+
+    # Part two
+    # Efficiently find the first Elf power level where no Elf dies
+    my $insufficient-power = 0;
+    my $sufficient-power = ∞;
+    for 1,2,4...∞ -> $elf-power {
+        @grid = $input.comb(/\N+/)».comb».Array;
+        $cave = Cave.new(:@grid, :$elf-power, :$verbose);
+        if $cave.play-until-elf-dies {
+            $sufficient-power = $elf-power;
+            say "Elf power level $elf-power: sufficient";
+            last;
+        }
+        else {
+            $insufficient-power = $elf-power;
+            say "Elf power level $elf-power: insufficient";
+        }
+    }
+    while $sufficient-power - $insufficient-power > 1 {
+        my $elf-power = ($sufficient-power + $insufficient-power) div 2;
+        @grid = $input.comb(/\N+/)».comb».Array;
+        $cave = Cave.new(:@grid, :$elf-power, :$verbose);
+        if $cave.play-until-elf-dies {
+            $sufficient-power = $elf-power;
+            say "Elf power level $elf-power: sufficient";
+        }
+        else {
+            $insufficient-power = $elf-power;
+            say "Elf power level $elf-power: insufficient";
+        }
+    }
+    @grid = $input.comb(/\N+/)».comb».Array;
+    $cave = Cave.new(:@grid, :elf-power($sufficient-power), :$verbose);
+    $cave.play;
+    say "With elf power $sufficient-power, combat ends after $cave.round-count() full rounds";
+    say "$cave.winner() team wins with $cave.total-hit-points() total hit points left";
+    say "Outcome: $cave.outcome()";
+}
+
+#| Process cave combat from a file (default aoc15.input)
+multi sub MAIN(Str $inputfile where *.IO.f = ~$*PROGRAM.sibling('aoc15.input'), Bool :v(:$verbose)=False)
+{
+    MAIN($inputfile.IO.slurp, :$verbose);
+}
