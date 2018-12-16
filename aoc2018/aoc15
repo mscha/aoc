@@ -160,10 +160,11 @@ sub cmp-hp($a, $b) { $a.hit-points <=> $b.hit-points || $a.y <=> $b.y || $a.x <=
 # Cave with elf/goblin units
 class Cave
 {
-    has @.grid;
+    has Str $.map;
     has Int $.elf-power = 3;
     has Int $.goblin-power = 3;
 
+    has @.grid = $!map.comb(/\N+/)».comb».Array;
     has Int $.width = +@!grid[0];
     has Int $.height = +@!grid;
     has Unit @.units;
@@ -275,12 +276,10 @@ class Cave
 
 
 #| Process cave combat
-multi sub MAIN(Str $input, Bool :v(:$verbose)=False)
+multi sub MAIN(Str $map, Bool :v(:$verbose)=False)
 {
-    my @grid = $input.comb(/\N+/)».comb».Array;
-
     # Part one
-    my $cave = Cave.new(:@grid, :$verbose);
+    my $cave = Cave.new(:$map, :$verbose);
     say $cave if $verbose;
     $cave.play;
     if $verbose {
@@ -297,8 +296,7 @@ multi sub MAIN(Str $input, Bool :v(:$verbose)=False)
     my $insufficient-power = 0;
     my $sufficient-power = ∞;
     for 1,2,4...∞ -> $elf-power {
-        @grid = $input.comb(/\N+/)».comb».Array;
-        $cave = Cave.new(:@grid, :$elf-power, :$verbose);
+        $cave = Cave.new(:$map, :$elf-power, :$verbose);
         if $cave.play-until-elf-dies {
             $sufficient-power = $elf-power;
             say "Elf power level $elf-power: sufficient";
@@ -311,8 +309,7 @@ multi sub MAIN(Str $input, Bool :v(:$verbose)=False)
     }
     while $sufficient-power - $insufficient-power > 1 {
         my $elf-power = ($sufficient-power + $insufficient-power) div 2;
-        @grid = $input.comb(/\N+/)».comb».Array;
-        $cave = Cave.new(:@grid, :$elf-power, :$verbose);
+        $cave = Cave.new(:$map, :$elf-power, :$verbose);
         if $cave.play-until-elf-dies {
             $sufficient-power = $elf-power;
             say "Elf power level $elf-power: sufficient";
@@ -322,8 +319,7 @@ multi sub MAIN(Str $input, Bool :v(:$verbose)=False)
             say "Elf power level $elf-power: insufficient";
         }
     }
-    @grid = $input.comb(/\N+/)».comb».Array;
-    $cave = Cave.new(:@grid, :elf-power($sufficient-power), :$verbose);
+    $cave = Cave.new(:$map, :elf-power($sufficient-power), :$verbose);
     $cave.play;
     say "With elf power $sufficient-power, combat ends after $cave.round-count() full rounds";
     say "$cave.winner() team wins with $cave.total-hit-points() total hit points left";
