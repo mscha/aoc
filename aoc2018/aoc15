@@ -273,6 +273,7 @@ class Cave
     method gist { self.Str }
 }
 
+
 #| Process cave combat
 multi sub MAIN(Str $input, Bool :v(:$verbose)=False)
 {
