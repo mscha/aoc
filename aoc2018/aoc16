@@ -1,0 +1,162 @@
+#!/usr/bin/env perl6
+use v6.c;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2018 day 16 -- https://adventofcode.com/2018/day/16
+
+enum Opcode <addr addi mulr muli banr bani borr bori setr seti gtir gtri gtrr eqir eqri eqrr>;
+
+grammar WristDeviceInstructions
+{
+    rule TOP { <sample>+ <test-program> }
+
+    rule sample { 'Before:' '[' <registers> ']'
+                       <input>
+                       'After:' '[' <registers> ']' }
+    rule registers { <n> ** 4 % ',' }
+    rule input { <n> ** 4 }
+
+    rule test-program { <program-line>+ }
+    rule program-line { <n> ** 4 }
+
+    token n { \d+ }
+}
+
+class WristDevice
+{
+    has @.register = 0 xx 4;
+    has @.samples;
+    has @.program;
+
+    has @.opcode-candidates = Opcode::.values.Set xx 16;
+    has @.opcode-by-id;
+
+    has Bool $.verbose = False;
+
+    # Actions for grammar WristDeviceInstructions
+    method sample($/)
+    {
+        @!samples.push: { :before($/<registers>[0]<n>».Int),
+                          :input($/<input><n>».Int),
+                          :after($/<registers>[1]<n>».Int) };
+    }
+    method program-line($/)
+    {
+        @.program.push: $<n>».Int;
+    }
+
+    # Process an instruction
+    method process(Opcode $opcode, ($a, $b, $c))
+    {
+        given $opcode {
+            @!register[$c] = @!register[$a] + @!register[$b] when addr;
+            @!register[$c] = @!register[$a] + $b when addi;
+            @!register[$c] = @!register[$a] × @!register[$b] when mulr;
+            @!register[$c] = @!register[$a] × $b when muli;
+            @!register[$c] = @!register[$a] +& @!register[$b] when banr;
+            @!register[$c] = @!register[$a] +& $b when bani;
+            @!register[$c] = @!register[$a] +| @!register[$b] when borr;
+            @!register[$c] = @!register[$a] +| $b when bori;
+            @!register[$c] = @!register[$a] when setr;
+            @!register[$c] = $a when seti;
+            @!register[$c] = +($a > @!register[$b]) when gtir;
+            @!register[$c] = +(@!register[$a] > $b) when gtri;
+            @!register[$c] = +(@!register[$a] > @!register[$b]) when gtrr;
+            @!register[$c] = +($a == @!register[$b]) when eqir;
+            @!register[$c] = +(@!register[$a] == $b) when eqri;
+            @!register[$c] = +(@!register[$a] == @!register[$b]) when eqrr;
+        }
+    }
+
+    # Find any opcodes that match a sample instruction
+    method find-possible-opcodes($instr)
+    {
+        my @before = $instr<before>[];
+        my $id = $instr<input>[0];
+        my @input = $instr<input>[1..3];
+        my @after = $instr<after>[];
+        my @cand;
+
+        # For each possible opcode, set the before values of the register, perform the opcode
+        # and verify the after values.  If they match, this is a possible opcode.
+        for Opcode::.values.sort -> $opcode {
+            @!register = @before;
+            self.process($opcode, @input);
+            if @!register eqv @after {
+                @cand.append($opcode);
+            }
+        }
+
+        # Limit the candidate opcodes for this ID to at most these candidates
+        @!opcode-candidates[$id] ∩= @cand;
+
+        return @cand;
+    }
+
+    # Match opcode IDs to opcodes, based on the candidates found before.
+    method match-opcode-ids
+    {
+        for ^16 {
+            # Find an ID with only one possible opcode.
+            # If there isn't one, we can't complete the match.
+            my ($id, $op) = @!opcode-candidates.first(*.keys == 1, :kv);
+            die "Unable to find opcode mapping!\n" unless $id.defined;
+
+            # Remember the match, and remove the matched opcode from every ID's candidates
+            my $opcode = $op.keys[0];
+            @!opcode-by-id[$id] = $opcode;
+            for @!opcode-candidates -> $op is rw {
+                $op ∖= $opcode;
+            }
+        }
+    }
+
+    # Execute the test program
+    method execute
+    {
+        # Reset the register
+        @!register = 0 xx 4;
+        say '  ', @!register if $!verbose;
+
+        # Process each line
+        for @!program -> @line {
+            say @!opcode-by-id[@line[0]], ' ', @line[1..3] if $!verbose;
+            self.process(@!opcode-by-id[@line[0]], @line[1..3]);
+            say '  ', @!register if $!verbose;
+        }
+    }
+}
+
+#| Process wrist device instructions
+multi sub MAIN(Str $instructions, Bool :v(:$verbose)=False)
+{
+    my $dev = WristDevice.new(:$verbose);
+    WristDeviceInstructions.parse($instructions, :actions($dev)) or die "Invalid input";
+
+    # Part 1
+    my $min3count = 0;
+    for $dev.samples.kv -> $i, $instr {
+        my @opcodes = $dev.find-possible-opcodes($instr);
+        say "Sample #$i: id #{$instr<input>[0]} has possible opcodes @opcodes[]" if $verbose;
+        $min3count++ if @opcodes ≥ 3;
+    }
+    say "There are $min3count samples which behave like at least three opcodes";
+
+    # Part 2
+    $dev.match-opcode-ids;
+    if $verbose {
+        say "Opcode mapping:";
+        for ^16 -> $id {
+            say " - #$id: $dev.opcode-by-id()[$id]";
+        }
+    }
+    $dev.execute;
+    say "The contents of the register after executing the test program are: $dev.register()";
+}
+
+#| Process wrist device instructions from a file (default aoc16.input)
+multi sub MAIN(Str $inputfile where *.IO.f = ~$*PROGRAM.sibling('aoc16.input'), Bool :v(:$verbose)=False)
+{
+    MAIN($inputfile.IO.slurp, :$verbose);
+}
