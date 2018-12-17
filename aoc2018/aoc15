@@ -188,8 +188,7 @@ class Cave
     }
 
     # Allow subscripting $cave[y;x]
-    method AT-POS($y, $x) is rw { return-rw @!grid[$y;$x] }
-    method ASSIGN-POS($y, $x, $v) { @!grid[$y;$x] = $v }
+    method AT-POS(|c) is raw { @!grid.AT-POS(|c) }
 
     # Calculate the distance between points (y1,x1) and (y2,x2)
     method distance(Int $y1, Int $x1, Int $y2, Int $x2)
