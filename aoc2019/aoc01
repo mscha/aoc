@@ -1,0 +1,41 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 1 -- https://adventofcode.com/2019/day/1
+
+$*OUT.out-buffer = False;   # Autoflush
+
+sub fuel-required(Int $mass --> Int)
+{
+    return max($mass div 3 - 2, 0);
+}
+
+sub total-fuel-required(Int $mass is copy --> Int)
+{
+    my $total-fuel = 0;
+    while (my $fuel = fuel-required($mass)) {
+        $total-fuel += $fuel;
+        $mass = $fuel;
+    }
+    return $total-fuel;
+}
+
+multi sub MAIN(*@modules, Bool :v(:$verbose) = False)
+{
+    # Part 1
+    my @masses = @modules».Int;
+    say @masses».&fuel-required.sum;
+
+    # Part 2
+    say @masses».&total-fuel-required.sum;
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.lines);
+}
+
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc01.input'));
+}
