@@ -1,0 +1,70 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 3 -- https://adventofcode.com/2019/day/3
+
+$*OUT.out-buffer = False;   # Autoflush
+
+class Wire
+{
+    has Str $.path;
+    has %.steps{Complex};
+
+    constant %DIRECTION = :L(-1), :R(1), :U(i), :D(-i);
+
+    submethod TWEAK
+    {
+        my $z = 0+0i;
+        my $count = 0;
+        for $!path.comb(/<[LRUD]>|\d+/) -> $dir, $steps {
+            for 1..$steps {
+                $z += %DIRECTION{$dir};
+                $count++;
+                %!steps{$z} = $count;
+            }
+        }
+    }
+
+    sub manhattan-distance(Complex $a, Complex $b = 0+0i)
+    {
+        return abs($a.re - $b.re) + abs($a.im - $b.im);
+    }
+
+    method intersections($other-wire)
+    {
+        return keys %!steps ∩ $other-wire.steps;
+    }
+
+    method distance-to-closest-intersection($other-wire)
+    {
+        return self.intersections($other-wire).map({ manhattan-distance($_) }).min;
+    }
+
+    method steps-to-first-intersection($other-wire)
+    {
+        return self.intersections($other-wire).map({ %!steps{$_} + $other-wire.steps{$_} }).min;
+    }
+}
+
+multi sub MAIN(Str $path1, Str $path2, Bool :v(:$verbose) = False)
+{
+    my $wire1 = Wire.new(:path($path1));
+    my $wire2 = Wire.new(:path($path2));
+
+    # Part 1
+    say $wire1.distance-to-closest-intersection($wire2);
+
+    # Part 2
+    say $wire1.steps-to-first-intersection($wire2);
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f,  Bool :v(:$verbose) = False)
+{
+    my ($path1, $path2) = $inputfile.IO.lines;
+    MAIN($path1, $path2, :$verbose);
+}
+
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc03.input'), :$verbose);
+}
