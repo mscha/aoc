@@ -23,7 +23,7 @@ sub has-repeated-digit-group-of-size(Int $n, Int $size)
 sub MAIN(Int $min = 172851, Int $max = 675869)
 {
     # Part 1
-    my @candidates = ($min..$max).grep(&has-repeated-digit).grep(&is-non-decreasing);
+    my @candidates = ($min..$max).grep(&is-non-decreasing).grep(&has-repeated-digit);
     say +@candidates;
 
     # Part 2
