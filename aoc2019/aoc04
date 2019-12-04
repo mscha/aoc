@@ -1,0 +1,33 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 3 -- https://adventofcode.com/2019/day/3
+
+$*OUT.out-buffer = False;   # Autoflush
+
+sub has-repeated-digit(Int $n)
+{
+    return !([≠] $n.comb(/\d/));
+}
+
+sub is-non-decreasing(Int $n)
+{
+    return [≤] $n.comb(/\d/);
+}
+
+sub has-repeated-digit-group-of-size-two(Int $n)
+{
+    return ?$n.comb(/ 0+ | 1+ | 2+ | 3+ | 4+ | 5+ | 6+ | 7+ | 8+ | 9+ /).grep(*.chars == 2);
+}
+
+sub MAIN(Int $min = 172851, Int $max = 675869, Bool :v(:$verbose) = False)
+{
+    # Part 1
+    my @candidates = ($min..$max).grep(&has-repeated-digit).grep(&is-non-decreasing);
+    say +@candidates;
+
+    # Part 2
+    @candidates .= grep(&has-repeated-digit-group-of-size-two);
+    say +@candidates;
+}
+
