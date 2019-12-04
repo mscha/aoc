@@ -5,14 +5,14 @@ use v6.d;
 
 $*OUT.out-buffer = False;   # Autoflush
 
-sub has-repeated-digit(Int $n)
-{
-    return !([≠] $n.comb(/\d/));
-}
-
 sub is-non-decreasing(Int $n)
 {
     return [≤] $n.comb(/\d/);
+}
+
+sub has-repeated-digit(Int $n)
+{
+    return !([≠] $n.comb(/\d/));
 }
 
 sub has-repeated-digit-group-of-size(Int $n, Int $size)
