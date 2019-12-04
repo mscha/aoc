@@ -17,10 +17,10 @@ sub is-non-decreasing(Int $n)
 
 sub has-repeated-digit-group-of-size(Int $n, Int $size)
 {
-    return ?$n.comb(/ (\d) $0* /).grep(*.chars == $size);
+    return ?$n.comb(/ \d+ % <same> /).grep(*.chars == $size);
 }
 
-sub MAIN(Int $min = 172851, Int $max = 675869, Bool :v(:$verbose) = False)
+sub MAIN(Int $min = 172851, Int $max = 675869)
 {
     # Part 1
     my @candidates = ($min..$max).grep(&has-repeated-digit).grep(&is-non-decreasing);
