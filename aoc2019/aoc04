@@ -17,7 +17,7 @@ sub is-non-decreasing(Int $n)
 
 sub has-repeated-digit-group-of-size-two(Int $n)
 {
-    return ?$n.comb(/ 0+ | 1+ | 2+ | 3+ | 4+ | 5+ | 6+ | 7+ | 8+ | 9+ /).grep(*.chars == 2);
+    return ?$n.comb(/ (\d) $0* /).grep(*.chars == 2);
 }
 
 sub MAIN(Int $min = 172851, Int $max = 675869, Bool :v(:$verbose) = False)
