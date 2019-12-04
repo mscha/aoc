@@ -15,9 +15,9 @@ sub is-non-decreasing(Int $n)
     return [≤] $n.comb(/\d/);
 }
 
-sub has-repeated-digit-group-of-size-two(Int $n)
+sub has-repeated-digit-group-of-size(Int $n, Int $size)
 {
-    return ?$n.comb(/ (\d) $0* /).grep(*.chars == 2);
+    return ?$n.comb(/ (\d) $0* /).grep(*.chars == $size);
 }
 
 sub MAIN(Int $min = 172851, Int $max = 675869, Bool :v(:$verbose) = False)
@@ -27,7 +27,7 @@ sub MAIN(Int $min = 172851, Int $max = 675869, Bool :v(:$verbose) = False)
     say +@candidates;
 
     # Part 2
-    @candidates .= grep(&has-repeated-digit-group-of-size-two);
+    @candidates .= grep(*.&has-repeated-digit-group-of-size(2));
     say +@candidates;
 }
 
