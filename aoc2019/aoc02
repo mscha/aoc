@@ -3,62 +3,14 @@ use v6.d;
 
 # Advent of Code 2019 day 2 -- https://adventofcode.com/2019/day/2
 
+use lib $*PROGRAM.parent;
+use ShipComputer;
+
 $*OUT.out-buffer = False;   # Autoflush
-
-class ShipComputer
-{
-    has Int @.program;
-    has Bool $.verbose = False;
-
-    has Int @!initial-program;
-
-    submethod TWEAK
-    {
-        # Keep the initial program to be able to reset it
-        @!initial-program = @!program;
-    }
-
-    method reset
-    {
-        @!program = @!initial-program;
-    }
-
-    method run-program
-    {
-        my $pos = 0;
-        say @!program if $!verbose;
-        while @!program[$pos] != 99 {
-            die "Invalid program position $pos" unless 0 ≤ $pos < @!program;
-            given @!program[$pos] {
-                when 1 {
-                    my ($p1, $p2, $p3) = @!program[$pos+1..$pos+3];
-                    my ($a, $b) = @!program[$p1,$p2];
-                    my $c = $a + $b;
-                    say "$pos: [$p3] = [$p1]+[$p2] = $a+$b = $c" if $!verbose;
-                    @!program[$p3] = $c;
-                    $pos += 4;
-                }
-                when 2 {
-                    my ($p1, $p2, $p3) = @!program[$pos+1..$pos+3];
-                    my ($a, $b) = @!program[$p1,$p2];
-                    my $c = $a × $b;
-                    say "$pos: [$p3] = [$p1]×[$p2] = $a×$b = $c" if $!verbose;
-                    @!program[$p3] = $c;
-                    $pos += 4;
-                }
-                default {
-                    die "Invalid instruction '@!program[$pos]' at $pos!";
-                }
-            }
-            say @!program if $!verbose;
-        }
-    }
-}
 
 multi sub MAIN(*@instructions, Int :$target = 19690720, Bool :v(:$verbose) = False)
 {
-    my @program = @instructions.join(' ').comb(/'-'?\d+/)».Int;
-    my $computer = ShipComputer.new(:@program, :$verbose);
+    my $computer = ShipComputer.new(:@instructions, :$verbose);
 
     # Part 1
     $computer.program[1,2] = 12,2;  # Alarm state
