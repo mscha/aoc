@@ -14,7 +14,6 @@ class ShipComputer
     has Bool $.debug = False;
 
     has Int $.pos = 0;
-    has Int $.input-pos = 0;
 
     has Int @!initial-program;
     has Int @!initial-input;
@@ -49,8 +48,6 @@ class ShipComputer
         $!pos = 0;
 
         @!input = @!initial-input;
-        $!input-pos = 0;
-
         @!output = ();
     }
 
@@ -71,8 +68,8 @@ class ShipComputer
 
     method input-value
     {
-        die "Invalid input position $!input-pos!" if $!input-pos ≥ @!input;
-        return @!input[$!input-pos++];
+        die "No input left for INP at position $!pos!" unless @!input;
+        return @!input.shift;
     }
 
     method run-program
