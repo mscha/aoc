@@ -8,7 +8,7 @@ use ShipComputer;
 
 $*OUT.out-buffer = False;   # Autoflush
 
-multi sub MAIN(*@instructions, Int :$target = 19690720, Bool :v(:$verbose) = False)
+multi sub MAIN(*@instructions, Bool :v(:$verbose) = False)
 {
     # Part 1
     my $computer = ShipComputer.new(:@instructions, :input(1), :$verbose);
@@ -22,12 +22,12 @@ multi sub MAIN(*@instructions, Int :$target = 19690720, Bool :v(:$verbose) = Fal
     say "Part 2: ", $computer.output.tail;
 }
 
-multi sub MAIN(Str $inputfile where *.IO.f, Int :$target = 19690720, Bool :v(:$verbose) = False)
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
 {
-    MAIN($inputfile.IO.lines, :$target, :$verbose);
+    MAIN($inputfile.IO.lines, :$verbose);
 }
 
-multi sub MAIN(Int :$target = 19690720, Bool :v(:$verbose) = False)
+multi sub MAIN(Bool :v(:$verbose) = False)
 {
-    MAIN(~$*PROGRAM.sibling('aoc05.input'), :$target, :$verbose);
+    MAIN(~$*PROGRAM.sibling('aoc05.input'), :$verbose);
 }
