@@ -3,9 +3,6 @@ use v6.d;
 
 # Advent of Code 2019 day 6 -- https://adventofcode.com/2019/day/6
 
-use lib $*PROGRAM.parent;
-use ShipComputer;
-
 $*OUT.out-buffer = False;   # Autoflush
 
 class Space
