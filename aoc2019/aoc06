@@ -1,0 +1,84 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 6 -- https://adventofcode.com/2019/day/6
+
+use lib $*PROGRAM.parent;
+use ShipComputer;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+class Space
+{
+    has %!orbits;
+
+    multi method add-orbit($object, $around)
+    {
+        %!orbits{$object} = $around;
+    }
+
+    multi method add-orbit($orbit-str)
+    {
+        my ($a, $o) = $orbit-str.comb(/\w+/);
+        self.add-orbit($o, $a);
+    }
+
+    method count-orbits
+    {
+        my $count = 0;
+        for %!orbits.keys -> $c is copy {
+            $count++ while $c = %!orbits{$c};
+        }
+        return $count;
+    }
+
+    method parents($o is copy)
+    {
+        gather while $o = %!orbits{$o} {
+            take $o;
+        }
+    }
+
+    method common-parent($a, $b)
+    {
+        my $parents-a = set self.parents($a);
+        return self.parents($b).first(* ∈ $parents-a);
+    }
+
+    method distance-to-parent($o is copy, $p)
+    {
+        my $distance = 0;
+        $distance++ while (($o = %!orbits{$o}) ne $p);
+        return $distance;
+    }
+
+    method travel-distance($a, $b)
+    {
+        my $p = self.common-parent($a, $b);
+        return self.distance-to-parent($a, $p) + self.distance-to-parent($b, $p);
+    }
+}
+
+multi sub MAIN(*@orbits, Bool :v(:$verbose) = False)
+{
+    my $space = Space.new;
+    for @orbits -> $o {
+        $space.add-orbit($o);
+    }
+
+    # Part 1
+    say $space.count-orbits;
+
+    # Part 2
+    say $space.travel-distance('YOU', 'SAN');
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.lines, :$verbose);
+}
+
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc06.input'), :$verbose);
+}
