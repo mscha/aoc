@@ -1,0 +1,90 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 7 -- https://adventofcode.com/2019/day/7
+
+use lib $*PROGRAM.parent;
+use ShipComputer;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+class Amplifier is ShipComputer {
+    my $max-id = 0;
+
+    has $.prev-amp is rw;
+    has $.output-channel = Channel.new;
+    has $.id = ++$max-id;
+
+    submethod TWEAK
+    {
+        self.set-input-handler: sub {
+            if !self.input && $!prev-amp {
+                return $!prev-amp.output-channel.receive;
+            }
+            else {
+                return self.input-value;
+            }
+        };
+        self.set-output-handler: sub ($v) {
+            $!output-channel.send($v);
+            self.output.append($v);
+        }
+    }
+
+    method clear-output-channel
+    {
+        while $!output-channel.poll { }
+    }
+}
+
+multi sub MAIN(*@instructions, Bool :v(:$verbose) = False)
+{
+    # Part 1
+    my $amp = Amplifier.new(:@instructions);
+    my $best-output = -∞;
+    for (^5).permutations -> @phases {
+        my $signal = 0;
+        for (^5) -> $i {
+            $amp.reset;
+            $amp.input = @phases[$i], $signal;
+            $amp.run-program;
+            $signal = $amp.output.tail;
+        }
+        say @phases, ' => ', $signal if $verbose;
+        $best-output max= $signal;
+    }
+    say "Part 1: ", $best-output;
+
+    # Part 2
+    my @amps = Amplifier.new(:@instructions) xx 5;
+    for ^5 -> $i {
+        @amps[$i].prev-amp = @amps[($i-1) % 5];
+    }
+    $best-output = -∞;
+    for (5..^10).permutations -> @phases {
+        my $signal = 0;
+        for (^5) -> $i {
+            @amps[$i].reset;
+            @amps[$i].clear-output-channel;
+            @amps[$i].input = @phases[$i];
+        }
+        @amps[0].input.append: 0;
+        await @amps.map: -> $amp {
+            start { $amp.run-program; }
+        }
+        $signal = @amps.tail.output.tail;
+        say @phases, ' => ', $signal if $verbose;
+        $best-output max= $signal;
+    }
+    say "Part 2: ", $best-output;
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.lines, :$verbose);
+}
+
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc07.input'), :$verbose);
+}
