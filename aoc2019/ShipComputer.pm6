@@ -1,7 +1,7 @@
 use v6.d;
 
 # Advent of Code 2019 -- Ship Computer
-# Implements opcodes for day 2 and 5
+# Implements opcodes and functionality for days 2, 5 and 7
 
 class ShipComputer
 {
@@ -17,6 +17,9 @@ class ShipComputer
 
     has Int @!initial-program;
     has Int @!initial-input;
+
+    has &.input-handler = sub { self.input-value };
+    has &.output-handler = sub ($v) { @!output.append($v) };
 
     enum Opcode (
         ADD => 1,
@@ -40,6 +43,16 @@ class ShipComputer
         # Save initial program and values to be able to do a reset
         @!initial-program = @!program;
         @!initial-input = @!input;
+    }
+
+    method set-input-handler(&h)
+    {
+        &!input-handler = &h;
+    }
+
+    method set-output-handler(&h)
+    {
+        &!output-handler = &h;
     }
 
     method reset
@@ -90,14 +103,14 @@ class ShipComputer
                     $!pos += 4;
                 }
                 when INP {
-                    my $val = $.input-value;
+                    my $val = &!input-handler();
                     say ">> $!pos: INP - [$.param(1,1)] = $val" if $!verbose;
                     $.param(1) = $val;
                     $!pos += 2;
                 }
                 when OUT {
                     say ">> $!pos: OUT - $.param(1)" if $!verbose;
-                    @!output.append: $.param(1);
+                    &!output-handler($.param(1));
                     $!pos += 2;
                 }
                 when JIT {
