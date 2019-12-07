@@ -9,11 +9,8 @@ use ShipComputer;
 $*OUT.out-buffer = False;   # Autoflush
 
 class Amplifier is ShipComputer {
-    my $max-id = 0;
-
     has $.prev-amp is rw;
     has $.output-channel = Channel.new;
-    has $.id = ++$max-id;
 
     submethod TWEAK
     {
@@ -31,9 +28,12 @@ class Amplifier is ShipComputer {
         }
     }
 
-    method clear-output-channel
+    method reset
     {
-        while $!output-channel.poll { }
+        if $!output-channel {
+            while $!output-channel.poll { }
+        }
+        nextsame;
     }
 }
 
@@ -65,7 +65,6 @@ multi sub MAIN(*@instructions, Bool :v(:$verbose) = False)
         my $signal = 0;
         for (^5) -> $i {
             @amps[$i].reset;
-            @amps[$i].clear-output-channel;
             @amps[$i].input = @phases[$i];
         }
         @amps[0].input.append: 0;
