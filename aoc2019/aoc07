@@ -8,21 +8,31 @@ use ShipComputer;
 
 $*OUT.out-buffer = False;   # Autoflush
 
+# An Amplifier is a ShipComputer that is optionally chained to other
+# Amplifiers.  The output of the previous amplifier is the input of this one
 class Amplifier is ShipComputer {
     has $.prev-amp is rw;
     has $.output-channel = Channel.new;
 
     submethod TWEAK
     {
+        # Override the input handler
         self.set-input-handler: sub {
+            # Only if we don't have any local input, and if we have a
+            # chained previous amplifier, ask it for an output value
             if !self.input && $!prev-amp {
                 return $!prev-amp.output-channel.receive;
             }
+            # Otherwise, just use a local input value
             else {
                 return self.input-value;
             }
         };
+
+        # Override the output handler
         self.set-output-handler: sub ($v) {
+            # In addition to saving the output as normal, also send it to
+            # the output channel
             $!output-channel.send($v);
             self.output.append($v);
         }
@@ -30,9 +40,11 @@ class Amplifier is ShipComputer {
 
     method reset
     {
+        # Clear the output channel of any remaining values
         if $!output-channel {
             while $!output-channel.poll { }
         }
+        # Perform the usual ShipComputer reset stuff
         nextsame;
     }
 }
