@@ -1,0 +1,72 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 8 -- https://adventofcode.com/2019/day/8
+
+$*OUT.out-buffer = False;   # Autoflush
+
+class SpaceImage
+{
+    has Str $.data;
+
+    has Int $.width;
+    has Int $.height;
+    has @.layers;
+
+    constant @PIXELS = '▓', '░';
+
+    submethod TWEAK
+    {
+        for $!data.comb(/\d/)».Int.rotor($!width × $!height) -> @p {
+            @!layers.push: @p.rotor($!width);
+        }
+    }
+
+    method pixels(Int $layer)
+    {
+        return @!layers[$layer;*;*];
+    }
+
+    method pixel-count(Int $layer, Int $value)
+    {
+        return +self.pixels($layer).grep($value);
+    }
+
+    method rendered-pixel(Int $x, Int $y)
+    {
+        return @PIXELS[@!layers»[$y;$x].first(* < 2)];
+    }
+
+    method decoded-image
+    {
+        (^$!height).map( -> $y {
+            (^$!width).map( -> $x {
+                self.rendered-pixel($x, $y)
+            }).join
+        }).join("\n")
+    }
+}
+
+multi sub MAIN(Str $data, Bool :v(:$verbose) = False)
+{
+    my $img = SpaceImage.new(:25width, :6height, :$data);
+
+    # Part 1
+    my @fewest-zeros = (^$img.layers).map(-> $i { $img.pixel-count($i, 0) }).minpairs;
+    my $layer = @fewest-zeros[0].key;
+    say "Part 1: ", $img.pixel-count($layer, 1) × $img.pixel-count($layer, 2);
+    
+    # Part 2
+    say "Part 2:";
+    say $img.decoded-image;
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.lines.join, :$verbose);
+}
+
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc08.input'), :$verbose);
+}
