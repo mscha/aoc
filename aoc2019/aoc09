@@ -1,0 +1,32 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 9 -- https://adventofcode.com/2019/day/9
+
+use lib $*PROGRAM.parent;
+use ShipComputer;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+multi sub MAIN(*@instructions, Bool :v(:$verbose) = False)
+{
+    # Part 1
+    my $computer = ShipComputer.new(:@instructions, :input(1), :$verbose);
+    $computer.run-program;
+    say "Part 1: ", $computer.output;
+
+    # Part 2
+    $computer = ShipComputer.new(:@instructions, :input(2), :$verbose);
+    $computer.run-program;
+    say "Part 2: ", $computer.output;
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.lines, :$verbose);
+}
+
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc09.input'), :$verbose);
+}
