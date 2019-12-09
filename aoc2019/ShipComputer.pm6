@@ -115,28 +115,35 @@ class ShipComputer
             die "Invalid program position $!pos" unless 0 ≤ $!pos < @!program;
             given $.opcode {
                 when ADD {
-                    say ">> $!pos: ADD - [$.param-ptr(3)] = $.param(1) + $.param(2)" if $!verbose;
+                    say ">> $!pos: ADD - [$.param-ptr(3)]" ~
+                        " := [$.param-ptr(1)] + [$.param-ptr(2)]" ~
+                        " = $.param(1) + $.param(2)" ~
+                        " = { $.param(1) + $.param(2) }" if $!verbose;
                     $.param(3) = $.param(1) + $.param(2);
                     $!pos += 4;
                 }
                 when MUL {
-                    say ">> $!pos: MUL - [$.param-ptr(3)] = $.param(1) × $.param(2)" if $!verbose;
+                    say ">> $!pos: MUL - [$.param-ptr(3)]" ~
+                        " := [$.param-ptr(1)] × [$.param-ptr(2)]" ~
+                        " = $.param(1) × $.param(2)" ~
+                        " = { $.param(1) × $.param(2) }" if $!verbose;
                     $.param(3) = $.param(1) × $.param(2);
                     $!pos += 4;
                 }
                 when INP {
                     my $val = &!input-handler();
-                    say ">> $!pos: INP - [$.param-ptr(1)] = $val" if $!verbose;
+                    say ">> $!pos: INP - [$.param-ptr(1)] := $val" if $!verbose;
                     $.param(1) = $val;
                     $!pos += 2;
                 }
                 when OUT {
-                    say ">> $!pos: OUT - $.param(1)" if $!verbose;
+                    say ">> $!pos: OUT - [$.param-ptr(1)] = $.param(1)" if $!verbose;
                     &!output-handler($.param(1));
                     $!pos += 2;
                 }
                 when JIT {
-                    say ">> $!pos: JIT - ? $.param(1) --> $.param(2)" if $!verbose;
+                    say ">> $!pos: JIT - ? [$.param-ptr(1)] = $.param(1)" ~
+                        " = { ?$.param(1) } --> [$.param-ptr(2)] = $.param(2)" if $!verbose;
                     if $.param(1) {
                         $!pos = $.param(2);
                     }
@@ -145,7 +152,8 @@ class ShipComputer
                     }
                 }
                 when JIF {
-                    say ">> $!pos: JIF - ! $.param(1) --> $.param(2)" if $!verbose;
+                    say ">> $!pos: JIF - ! [$.param-ptr(1)] = $.param(1)" ~
+                        " = { ?$.param(1) } --> [$.param-ptr(2)] = $.param(2)" if $!verbose;
                     if !$.param(1) {
                         $!pos = $.param(2);
                     }
@@ -154,17 +162,23 @@ class ShipComputer
                     }
                 }
                 when LTH {
-                    say ">> $!pos: LTH - [$.param-ptr(3)] = ($.param(1) < $.param(2))" if $!verbose;
+                    say ">> $!pos: LTH - [$.param-ptr(3)] := ([$.param-ptr(1)] < [$.param-ptr(2)])" ~
+                        " = ($.param(1) < $.param(2))" ~
+                        " = { $.param(1) < $.param(2) }" if $!verbose;
                     $.param(3) = +($.param(1) < $.param(2));
                     $!pos += 4;
                 }
                 when EQU {
-                    say ">> $!pos: EQU - [$.param-ptr(3)] = ($.param(1) == $.param(2))" if $!verbose;
+                    say ">> $!pos: EQU - [$.param-ptr(3)] := ([$.param-ptr(1)] == [$.param-ptr(2)])" ~
+                        " = ($.param(1) == $.param(2))" ~
+                        " = { $.param(1) == $.param(2) }" if $!verbose;
                     $.param(3) = +($.param(1) == $.param(2));
                     $!pos += 4;
                 }
                 when ARB {
-                    say ">> $!pos: ARB - $!relative-base + $.param(1) = {$!relative-base+$.param(1)}" if $!verbose;
+                    say ">> $!pos: ARB - base = $!relative-base + [$.param-ptr(1)]" ~
+                        " = $!relative-base + $.param(1)" ~
+                        " = { $!relative-base + $.param(1) }" if $!verbose;
                     $!relative-base += $.param(1);
                     $!pos += 2;
                 }
