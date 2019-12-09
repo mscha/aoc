@@ -11,13 +11,13 @@ $*OUT.out-buffer = False;   # Autoflush
 multi sub MAIN(*@instructions, Bool :v(:$verbose) = False)
 {
     # Part 1
-    my $computer = ShipComputer.new(:@instructions, :input(1), :$verbose);
-    $computer.run-program;
+    my $computer = ShipComputer.new(:@instructions, :$verbose);
+    $computer.run-program(1);
     say "Part 1: ", $computer.output;
 
     # Part 2
-    $computer = ShipComputer.new(:@instructions, :input(2), :$verbose);
-    $computer.run-program;
+    $computer.reset;
+    $computer.run-program(2);
     say "Part 2: ", $computer.output;
 }
 
