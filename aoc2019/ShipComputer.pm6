@@ -81,19 +81,24 @@ class ShipComputer
         return @!program[$!pos] div 10**($n+1) % 10;
     }
 
-    method param(Int $n, Int $mode = $.param-mode($n)) is rw
+    method param-ptr(Int $n, Int $mode = $.param-mode($n))
     {
         given $mode {
             when POSITION {
-                return-rw @!program[@!program[$!pos+$n]];
-            }
-            when IMMEDIATE {
                 return @!program[$!pos+$n];
             }
+            when IMMEDIATE {
+                return $!pos+$n;
+            }
             when RELATIVE {
-                return-rw @!program[$!relative-base+@!program[$!pos+$n]];
+                return $!relative-base+@!program[$!pos+$n];
             }
         }
+    }
+
+    method param(Int $n, Int $mode = $.param-mode($n)) is rw
+    {
+        return-rw @!program[$.param-ptr($n, $mode)];
     }
 
     method input-value
@@ -110,18 +115,18 @@ class ShipComputer
             die "Invalid program position $!pos" unless 0 ≤ $!pos < @!program;
             given $.opcode {
                 when ADD {
-                    say ">> $!pos: ADD - [$.param(3,IMMEDIATE)] = $.param(1) + $.param(2)" if $!verbose;
+                    say ">> $!pos: ADD - [$.param-ptr(3)] = $.param(1) + $.param(2)" if $!verbose;
                     $.param(3) = $.param(1) + $.param(2);
                     $!pos += 4;
                 }
                 when MUL {
-                    say ">> $!pos: MUL - [$.param(3,IMMEDIATE)] = $.param(1) × $.param(2)" if $!verbose;
+                    say ">> $!pos: MUL - [$.param-ptr(3)] = $.param(1) × $.param(2)" if $!verbose;
                     $.param(3) = $.param(1) × $.param(2);
                     $!pos += 4;
                 }
                 when INP {
                     my $val = &!input-handler();
-                    say ">> $!pos: INP - [$.param(1,IMMEDIATE)] = $val" if $!verbose;
+                    say ">> $!pos: INP - [$.param-ptr(1)] = $val" if $!verbose;
                     $.param(1) = $val;
                     $!pos += 2;
                 }
@@ -149,12 +154,12 @@ class ShipComputer
                     }
                 }
                 when LTH {
-                    say ">> $!pos: LTH - [$.param(3,IMMEDIATE)] = ($.param(1) < $.param(2))" if $!verbose;
+                    say ">> $!pos: LTH - [$.param-ptr(3)] = ($.param(1) < $.param(2))" if $!verbose;
                     $.param(3) = +($.param(1) < $.param(2));
                     $!pos += 4;
                 }
                 when EQU {
-                    say ">> $!pos: EQU - [$.param(3,IMMEDIATE)] = ($.param(1) == $.param(2))" if $!verbose;
+                    say ">> $!pos: EQU - [$.param-ptr(3)] = ($.param(1) == $.param(2))" if $!verbose;
                     $.param(3) = +($.param(1) == $.param(2));
                     $!pos += 4;
                 }
