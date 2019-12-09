@@ -1,19 +1,20 @@
 use v6.d;
 
 # Advent of Code 2019 -- Ship Computer
-# Implements opcodes and functionality for days 2, 5 and 7
+# Implements opcodes and functionality for days 2, 5, 7 and 9.
 
 class ShipComputer
 {
     has Str @.instructions;
-    has Int @.program;
+    has Int @.program is default(0);
     has Int @.input;
     has Int @.output;
 
-    has Bool $.verbose = False;
     has Bool $.debug = False;
+    has Bool $.verbose = False;
 
-    has Int $.pos = 0;
+    has Int $!pos = 0;
+    has Int $!relative-base = 0;
 
     has Int @!initial-program;
     has Int @!initial-input;
@@ -30,8 +31,11 @@ class ShipComputer
         JIF => 6,
         LTH => 7,
         EQU => 8,
+        ARB => 9,
         HLT => 99
     );
+
+    enum ParameterMode <POSITION IMMEDIATE RELATIVE>;
 
     submethod TWEAK
     {
@@ -43,6 +47,9 @@ class ShipComputer
         # Save initial program and values to be able to do a reset
         @!initial-program = @!program;
         @!initial-input = @!input;
+
+        # --debug implies --verbose
+        $!verbose = True if $!debug;
     }
 
     method set-input-handler(&h)
@@ -76,7 +83,17 @@ class ShipComputer
 
     method param(Int $n, Int $mode = $.param-mode($n)) is rw
     {
-        return-rw $mode ?? @!program[$!pos+$n] !! @!program[@!program[$!pos+$n]]
+        given $mode {
+            when POSITION {
+                return-rw @!program[@!program[$!pos+$n]];
+            }
+            when IMMEDIATE {
+                return @!program[$!pos+$n];
+            }
+            when RELATIVE {
+                return-rw @!program[$!relative-base+@!program[$!pos+$n]];
+            }
+        }
     }
 
     method input-value
@@ -93,18 +110,18 @@ class ShipComputer
             die "Invalid program position $!pos" unless 0 ≤ $!pos < @!program;
             given $.opcode {
                 when ADD {
-                    say ">> $!pos: ADD - [$.param(3,1)] = $.param(1) + $.param(2)" if $!verbose;
+                    say ">> $!pos: ADD - [$.param(3,IMMEDIATE)] = $.param(1) + $.param(2)" if $!verbose;
                     $.param(3) = $.param(1) + $.param(2);
                     $!pos += 4;
                 }
                 when MUL {
-                    say ">> $!pos: MUL - [$.param(3,1)] = $.param(1) × $.param(2)" if $!verbose;
+                    say ">> $!pos: MUL - [$.param(3,IMMEDIATE)] = $.param(1) × $.param(2)" if $!verbose;
                     $.param(3) = $.param(1) × $.param(2);
                     $!pos += 4;
                 }
                 when INP {
                     my $val = &!input-handler();
-                    say ">> $!pos: INP - [$.param(1,1)] = $val" if $!verbose;
+                    say ">> $!pos: INP - [$.param(1,IMMEDIATE)] = $val" if $!verbose;
                     $.param(1) = $val;
                     $!pos += 2;
                 }
@@ -132,14 +149,19 @@ class ShipComputer
                     }
                 }
                 when LTH {
-                    say ">> $!pos: LTH - [$.param(3,1)] = ($.param(1) < $.param(2))" if $!verbose;
+                    say ">> $!pos: LTH - [$.param(3,IMMEDIATE)] = ($.param(1) < $.param(2))" if $!verbose;
                     $.param(3) = +($.param(1) < $.param(2));
                     $!pos += 4;
                 }
                 when EQU {
-                    say ">> $!pos: EQU - [$.param(3,1)] = ($.param(1) == $.param(2))" if $!verbose;
+                    say ">> $!pos: EQU - [$.param(3,IMMEDIATE)] = ($.param(1) == $.param(2))" if $!verbose;
                     $.param(3) = +($.param(1) == $.param(2));
                     $!pos += 4;
+                }
+                when ARB {
+                    say ">> $!pos: ARB - $!relative-base + $.param(1) = {$!relative-base+$.param(1)}" if $!verbose;
+                    $!relative-base += $.param(1);
+                    $!pos += 2;
                 }
                 when HLT {
                     say ">> $!pos: HLT" if $!verbose;
