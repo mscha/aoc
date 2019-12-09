@@ -66,6 +66,7 @@ class ShipComputer
     {
         @!program = @!initial-program;
         $!pos = 0;
+        $!relative-base = 0;
 
         @!input = @!initial-input;
         @!output = ();
@@ -107,8 +108,10 @@ class ShipComputer
         return @!input.shift;
     }
 
-    method run-program
+    method run-program(*@input)
     {
+        @!input = @input if @input;
+
         say "< @!program[] >" if $!debug;
         INSTRUCTION:
         loop {
