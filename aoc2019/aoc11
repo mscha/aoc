@@ -30,7 +30,7 @@ class HullPainter
     has Int $!min-y = 0;
     has Int $!max-y = 0;
 
-    has ShipComputer $!computer = ShipComputer.new(
+    has ShipComputer $!computer .= new(
         :@!instructions,
         input-handler => sub {
             say ">> INP { self.current-color }" if $!verbose;
