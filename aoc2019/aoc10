@@ -1,0 +1,123 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 10 -- https://adventofcode.com/2019/day/10
+
+$*OUT.out-buffer = False;   # Autoflush
+
+class AsteroidMap
+{
+    has Str $.map;
+    has @.grid;
+    has Complex @.pos;
+
+    has Int $!width;
+    has Int $!height;
+
+    constant ASTEROID = '#';
+    constant SPACE = '.';
+
+    submethod TWEAK
+    {
+        # Fill the grid with the provided map
+        @!grid = $!map.trim.split(/\s+/)».comb;
+        $!height = +@!grid;
+        $!width = +@!grid[0];
+
+        # Find the positions of the asteroids, and store these as complex numbers
+        for (^$!height) X (^$!width) -> ($y, $x) {
+            if @!grid[$y;$x] eq ASTEROID {
+                @!pos.append($x + $y*i);
+            }
+        }
+    }
+
+    method in-range(Complex $z)
+    {
+        return 0 ≤ $z.re < $!width && 0 ≤ $z.im < $!height;
+    }
+
+    method check-visibility(Complex $base)
+    {
+        # Assume all asteroids (except the base) are visible
+        my %visible{Complex} = @!pos.grep(* ≠ $base).map(* => True);
+
+        # Loop through all asteroids to mark asteroids behind them as invisible
+        for @!pos -> $a {
+            next unless %visible{$a};
+
+            # Find the step size to loop behind asteroid .  This can be smaller than
+            # (a - base), for instance, if base = 0, a = 2+4i, we must check 3+6i, 4+8i, ...
+            my $diff = $a - $base;
+            my $step = $diff / [gcd] $diff.reals;
+
+            # Mark any asteroids behind a as invisible
+            for $a+$step, *+$step ... * -> $b {
+                last unless self.in-range($b);
+                %visible{$b} = False if %visible{$b}:exists;
+            }
+        }
+
+        return +%visible.grep(*.value);
+    }
+
+    method highest-visibility
+    {
+        my @best = @!pos.map({ self.check-visibility($_) }).maxpairs;
+        return @!pos[@best[0].key] => @best[0].value;
+    }
+
+    method angle(Complex $from, Complex $to)
+    {
+        # The angle we need is 0 for "north", π/2 for "east", etc.  Multiply the vector by i
+        # to get the right angle in the polar coordinates.
+        return (i × ($to - $from)).polar[1] % τ;
+    }
+
+    method closest(Complex $from, *@to)
+    {
+        return @to.min({ abs($_ - $from) });
+    }
+
+    method vaporize-asteroids(Complex $base)
+    {
+        # Calculate the angle of the vector from the base to each asteroid
+        my %angle{Complex} = @!pos.grep(* ≠ $base).map({ $_ => self.angle($base, $_) });
+
+        # Keep zapping until we have no asteroids left
+        return gather while %angle {
+            # Loop through each unique angle value
+            for %angle.values.sort.squish -> $a {
+                # Find the closest asteroid with that angle, and zap it.
+                my $zap = self.closest($base, %angle.grep(*.value == $a)».key);
+                take $zap;
+                %angle{$zap}:delete;
+            }
+            last;
+        }
+    }
+}
+
+multi sub MAIN(Str $map, Int $nth = 200, Bool :v(:$verbose) = False)
+{
+    my $ast = AsteroidMap.new(:$map);
+
+    # Part 1
+    my ($base, $visibility) = $ast.highest-visibility.kv;
+    say "Best visibility: $visibility @ $base";
+    
+    # Part 2
+    my @zap = $ast.vaporize-asteroids($base);
+    my $winner = @zap[$nth-1];
+    say "{$nth}th asteroid to be vaporized is at $winner ({ 100*$winner.re + $winner.im })";
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Int $nth = 200, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.slurp, $nth, :$verbose);
+}
+
+multi sub MAIN(Int $nth = 200, Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc10.input'), $nth, :$verbose);
+}
