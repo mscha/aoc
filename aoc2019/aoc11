@@ -1,0 +1,157 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 11 -- https://adventofcode.com/2019/day/11
+
+use lib $*PROGRAM.parent;
+use ShipComputer;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+enum Color <BLACK WHITE>;
+enum PainterState <PAINT MOVE>;
+
+class HullPainter
+{
+    has Str @.instructions;
+
+    has Bool $.verbose = False;
+
+    has PainterState $!state = PAINT;
+
+    has Complex $!direction = -i;
+    has Complex $!position = 0+0i;
+
+    has Color %!painted{Complex};
+
+    has Int $!min-x = 0;
+    has Int $!max-x = 0;
+    has Int $!min-y = 0;
+    has Int $!max-y = 0;
+
+    has ShipComputer $!computer = ShipComputer.new(
+        :@!instructions,
+        input-handler => sub {
+            say ">> INP { self.current-color }" if $!verbose;
+            return self.current-color;
+        },
+        output-handler => sub ($v) {
+            say ">> OUT $v" if $!verbose;
+            given $!state {
+                when PAINT {
+                    self.paint($v);
+                    $!state = MOVE;
+                }
+                when MOVE {
+                    self.turn($v);
+                    self.move;
+                    $!state = PAINT;
+                }
+            }
+        },
+    );
+
+    constant @PIXELS = '▓', '░';
+
+    multi method color(Complex $z)
+    {
+        return %!painted{$z} // BLACK;
+    }
+
+    multi method color(Int $x, Int $y)
+    {
+        return self.color($x + $y×i);
+    }
+
+    method current-color
+    {
+        return self.color($!position);
+    }
+
+    method paint(Int $col)
+    {
+        %!painted{$!position} = Color($col);
+        say "> Paint panel $!position { Color($col) }" if $!verbose;
+    }
+
+    method turn(Int $dir)
+    {
+        given $dir {
+            when 0 {
+                $!direction ×= -i;
+                say "> Turn left" if $!verbose;
+            }
+            when 1 {
+                $!direction ×= i;
+                say "> Turn right" if $!verbose;
+            }
+            default { die "Unexpected turn: $dir" }
+        }
+    }
+
+    method move
+    {
+        $!position += $!direction;
+        say "> Move to $!position" if $!verbose;
+
+        $!min-x min= $!position.re.Int;
+        $!max-x max= $!position.re.Int;
+        $!min-y min= $!position.im.Int;
+        $!max-y max= $!position.im.Int;
+    }
+
+    method run
+    {
+        $!computer.run-program;
+    }
+
+    method num-painted-panels
+    {
+        return +%!painted;
+    }
+
+    method pixel(Int $x, Int $y)
+    {
+        return @PIXELS[self.color($x, $y)];
+    }
+
+    method Str
+    {
+        return ($!min-y..$!max-y).map(-> $y {
+            ($!min-x..$!max-x).map(-> $x {
+                self.pixel($x, $y)
+            }).join
+        }).join("\n");
+    }
+
+    method gist
+    {
+        self.Str
+    }
+}
+
+multi sub MAIN(*@instructions, Bool :v(:$verbose) = False)
+{
+    # Part 1
+    my $painter = HullPainter.new(:@instructions, :$verbose);
+    $painter.run;
+    #say $painter;
+    say "Part 1: $painter.num-painted-panels() painted panels.";
+
+    # Part 2
+    $painter = HullPainter.new(:@instructions, :$verbose);
+    $painter.paint(WHITE);
+    $painter.run;
+    say "Part 2:";
+    say $painter;
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.lines, :$verbose);
+}
+
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc11.input'), :$verbose);
+}
