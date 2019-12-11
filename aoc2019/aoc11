@@ -51,7 +51,7 @@ class HullPainter
         },
     );
 
-    constant @PIXELS = '▓', '░';
+    constant @PIXELS = '▓▓', '░░';
 
     multi method color(Complex $z)
     {
