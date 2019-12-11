@@ -9,6 +9,7 @@ use ShipComputer;
 $*OUT.out-buffer = False;   # Autoflush
 
 enum Color <BLACK WHITE>;
+enum TurnDirection <LEFT RIGHT>;
 enum PainterState <PAINT MOVE>;
 
 class HullPainter
@@ -39,11 +40,11 @@ class HullPainter
             say ">> OUT $v" if $!verbose;
             given $!state {
                 when PAINT {
-                    self.paint($v);
+                    self.paint(Color($v));
                     $!state = MOVE;
                 }
                 when MOVE {
-                    self.turn($v);
+                    self.turn(TurnDirection($v));
                     self.move;
                     $!state = PAINT;
                 }
@@ -68,24 +69,26 @@ class HullPainter
         return self.color($!position);
     }
 
-    method paint(Int $col)
+    method paint(Color $col)
     {
-        %!painted{$!position} = Color($col);
-        say "> Paint panel $!position { Color($col) }" if $!verbose;
+        %!painted{$!position} = $col;
+        say "> Paint panel $!position $col" if $!verbose;
     }
 
-    method turn(Int $dir)
+    method turn(TurnDirection $dir)
     {
         given $dir {
-            when 0 {
+            when LEFT {
                 $!direction ×= -i;
                 say "> Turn left" if $!verbose;
             }
-            when 1 {
+            when RIGHT {
                 $!direction ×= i;
                 say "> Turn right" if $!verbose;
             }
-            default { die "Unexpected turn: $dir" }
+            default {
+                die "Unexpected turn: $dir"
+            }
         }
     }
 
