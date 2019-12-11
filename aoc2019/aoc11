@@ -117,8 +117,8 @@ class HullPainter
 
     method Str
     {
-        return ($!min-y..$!max-y).map(-> $y {
-            ($!min-x..$!max-x).map(-> $x {
+        return ($!min-y - 1 .. $!max-y + 1).map(-> $y {
+            ($!min-x - 1 .. $!max-x + 1).map(-> $x {
                 self.pixel($x, $y)
             }).join
         }).join("\n");
