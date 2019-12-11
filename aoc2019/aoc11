@@ -126,11 +126,7 @@ class HullPainter
             }).join
         }).join("\n");
     }
-
-    method gist
-    {
-        self.Str
-    }
+    method gist { self.Str }
 }
 
 multi sub MAIN(*@instructions, Bool :v(:$verbose) = False)
