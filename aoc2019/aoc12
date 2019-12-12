@@ -92,37 +92,22 @@ class OrbitSystem
 
     multi method find-cycle(Coords $c)
     {
-        # To find a cycle for the x, y or z coordinate, we keep track of all seen
-        # states, and keep looping until we encounter one we've seen before.
-        my %seen;
-        ITERATION:
-        for ^∞ -> $i {
-            my $state = @!moons».state($c).join('/');
-            if %seen{$state}:exists {
-                # We've seen this one before.  Return the starting point of the cycle
-                # and the length of the cycle.
-                return %seen{$state} => $i - %seen{$state};
-                last ITERATION;
-            }
-            %seen{$state} = $i;
+        # Keep stepping until the state for the given coordinate is equal to the
+        # starting state.
+        my $initial-state = @!moons».state($c).join('/');
+        for 1..∞ -> $i {
             self.step;
+            if @!moons».state($c).join('/') eq $initial-state {
+                return $i;
+            }
         }
     }
 
     multi method find-cycle
     {
-        # The behaviour of the x, y and z coordinates is independent, so start
-        # by finding the cycles for each coordinate.
-        my @cycles = (x,y,z).map: -> $c { self.find-cycle($c) }
-
-        # The length of the combined cycle is the least common multiple of the
-        # individual lengths.
-        my $cycle-length = [lcm] @cycles».value;
-
-        # The cycle starts at the latest of the individual starting points.
-        my $cycle-start = [max] @cycles».key;
-
-        return $cycle-start => $cycle-length;
+        # The behaviour of the x, y and z coordinates is independent, so find
+        # cycles for each coordinate and take the least common multiple.
+        return [lcm] (x,y,z).map: -> $c { self.find-cycle($c) }
     }
 }
 
@@ -150,9 +135,9 @@ multi sub MAIN(Str $positions, Int $steps = 1000, Bool :v(:$verbose) = False)
     
     # Part 2
     $system = OrbitSystem.new(:$positions);
-    my $cycle = $system.find-cycle;
-    say "The sytem is cyclic starting at $cycle.key() with a period of $cycle.value(), ";
-    say "so the first repeating state is after { $cycle.key + $cycle.value } steps.";
+    say $system.find-cycle;
+    #say "The system is cyclic starting at $cycle.key() with a period of $cycle.value(), ";
+    #say "so the first repeating state is after { $cycle.key + $cycle.value } steps.";
 }
 
 multi sub MAIN(Str $inputfile where *.IO.f, Int $steps = 1000, Bool :v(:$verbose) = False)
