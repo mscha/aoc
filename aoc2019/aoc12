@@ -1,0 +1,166 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 12 -- https://adventofcode.com/2019/day/12
+
+$*OUT.out-buffer = False;   # Autoflush
+
+enum Coords <x y z>;
+
+grammar LunarPositions
+{
+    rule TOP { <position>+ % \s* }
+    rule position { '<' 'x' '=' <x> ',' 'y' '=' <y> ',' 'z' '=' <z> '>' }
+
+    token x { <int> }
+    token y { <int> }
+    token z { <int> }
+
+    token int { '-'?\d+ }
+}
+
+class Moon
+{
+    has Int @.pos;
+    has Int @.vel = 0,0,0;
+
+    method potential-energy { @!pos».abs.sum }
+    method kinetic-energy { @!vel».abs.sum }
+    method energy { self.potential-energy × self.kinetic-energy }
+
+    method x is rw { @!pos[x] }
+    method y is rw { @!pos[y] }
+    method z is rw { @!pos[z] }
+
+    method vx is rw { @!vel[x] }
+    method vy is rw { @!vel[y] }
+    method vz is rw { @!vel[z] }
+
+    method Str { "[pos=<@!pos.join(',')> vel=<@!vel.join(',')> energy=$.energy()]" }
+    method gist { self.Str }
+
+    method state(Coords $c) { "@!pos[$c]|@!vel[$c]" }
+}
+
+class OrbitSystem
+{
+    has Str $.positions;
+    has Moon @.moons;
+
+    submethod TWEAK
+    {
+        self.parse-positions($!positions) if $!positions;
+    }
+
+    method parse-positions(Str $positions)
+    {
+        for LunarPositions.parse($positions)<position> -> $pos {
+            @!moons.append: Moon.new(:pos(+$pos<x>, +$pos<y>, +$pos<z>));
+        }
+    }
+
+    method total-energy
+    {
+        return @!moons».energy.sum;
+    }
+
+    method apply-gravity
+    {
+        for @!moons.combinations(2) -> ($m1, $m2) {
+            for x,y,z -> $c {
+                given $m1.pos[$c] <=> $m2.pos[$c] {
+                    when Less { $m1.vel[$c]++; $m2.vel[$c]-- }
+                    when More { $m1.vel[$c]--; $m2.vel[$c]++ }
+                }
+            }
+        }
+    }
+
+    method apply-velocity
+    {
+        for @!moons -> $m {
+            #$m.pos Z+= $m.vel;      # Should work but doesn't
+            $m.pos[$_] += $m.vel[$_] for x,y,z;
+        }
+    }
+
+    method step
+    {
+        self.apply-gravity;
+        self.apply-velocity;
+    }
+
+    multi method find-cycle(Coords $c)
+    {
+        # To find a cycle for the x, y or z coordinate, we keep track of all seen
+        # states, and keep looping until we encounter one we've seen before.
+        my %seen;
+        ITERATION:
+        for ^∞ -> $i {
+            my $state = @!moons».state($c).join('/');
+            if %seen{$state}:exists {
+                # We've seen this one before.  Return the starting point of the cycle
+                # and the length of the cycle.
+                return %seen{$state} => $i - %seen{$state};
+                last ITERATION;
+            }
+            %seen{$state} = $i;
+            self.step;
+        }
+    }
+
+    multi method find-cycle
+    {
+        # The behaviour of the x, y and z coordinates is independent, so start
+        # by finding the cycles for each coordinate.
+        my @cycles = (x,y,z).map: -> $c { self.find-cycle($c) }
+
+        # The length of the combined cycle is the least common multiple of the
+        # individual lengths.
+        my $cycle-length = [lcm] @cycles».value;
+
+        # The cycle starts at the latest of the individual starting points.
+        my $cycle-start = [max] @cycles».key;
+
+        return $cycle-start => $cycle-length;
+    }
+}
+
+multi sub MAIN(Str $positions, Int $steps = 1000, Bool :v(:$verbose) = False)
+{
+    # Part 1
+    my $system = OrbitSystem.new(:$positions);
+    if $verbose {
+        say "Starting positions:";
+        say " - $_" for $system.moons;
+        say "Total energy: ", $system.total-energy;
+        say "";
+    }
+
+    for 1..$steps -> $s {
+        $system.step;
+        if $verbose {
+            say "Positions after $s steps:";
+            say " - $_" for $system.moons;
+            say "Total energy: ", $system.total-energy;
+            say "";
+        }
+    }
+    say "Total energy after $steps steps: ", $system.total-energy;
+    
+    # Part 2
+    $system = OrbitSystem.new(:$positions);
+    my $cycle = $system.find-cycle;
+    say "The sytem is cyclic starting at $cycle.key() with a period of $cycle.value(), ";
+    say "so the first repeating state is after { $cycle.key + $cycle.value } steps.";
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Int $steps = 1000, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.slurp, $steps, :$verbose);
+}
+
+multi sub MAIN(Int $steps = 1000, Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc12.input'), $steps, :$verbose);
+}
