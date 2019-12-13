@@ -84,7 +84,7 @@ class ArcadeCabinet
 
     method hack-quarters(Int $count)
     {
-        $!computer.program[0] = $count;
+        $!computer.poke(0, $count);
     }
 
     method Str
