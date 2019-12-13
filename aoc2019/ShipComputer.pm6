@@ -77,6 +77,13 @@ class ShipComputer
         return @!program[$!pos] % 100;
     }
 
+    method poke(Int $loc, Int $val)
+    {
+        # This isn't really necessary, you can just do .program[$loc] = $val, but
+        # this is more fun :-)
+        @!program[$loc] = $val;
+    }
+
     method param-mode(Int $n)
     {
         return @!program[$!pos] div 10**($n+1) % 10;
