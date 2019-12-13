@@ -1,0 +1,126 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 13 -- https://adventofcode.com/2019/day/13
+
+use lib $*PROGRAM.parent;
+use ShipComputer;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+enum Tile <EMPTY WALL BLOCK PADDLE BALL>;
+constant @TILE = ' ', '▓', '▪', '▂', '⬤';
+
+enum JoystickDirection (:LEFT(-1), :NEUTRAL(0), :RIGHT(1));
+
+class ArcadeCabinet
+{
+    has Str @.instructions;
+    has Bool $.verbose = False;
+
+    has @.grid;
+
+    has $!min-x = ∞;
+    has $!max-x = -∞;
+    has $!min-y = ∞;
+    has $!max-y = -∞;
+
+    has $.score = 0;
+
+    has $.paddle-x = 0;
+    has $.ball-x = 0;
+
+    has ShipComputer $!computer .= new(
+        :@!instructions,
+        input-handler => sub { return self.joystick-state },
+        output-handler => sub ($v) { self.handle-output($v) },
+    );
+
+    method joystick-state
+    {
+        my $dir = JoystickDirection(+($!ball-x <=> $!paddle-x));
+        say "[Joystick input; paddle at x=$!paddle-x, ball at x=$!ball-x: $dir]" if $!verbose;
+        return $dir;
+    }
+
+    method handle-output(Int $v)
+    {
+        state @out;
+
+        @out.append: $v;
+        if @out == 3 {
+            if @out[0] == -1 && @out[1] == 0 {
+                self.set-score(+@out[2]);
+            }
+            else {
+                self.draw-tile(@out[0], @out[1], Tile(@out[2]));
+            }
+            @out = ();
+        }
+    }
+
+    method draw-tile(Int $x, Int $y, Tile $t)
+    {
+        @!grid[$y;$x] = $t;
+
+        $!min-x min= $x;
+        $!max-x max= $x;
+        $!min-y min= $y;
+        $!max-y max= $y;
+
+        $!paddle-x = $x if $t == PADDLE;
+        $!ball-x = $x if $t == BALL;
+    }
+
+    method set-score(Int $s)
+    {
+        $!score = $s;
+        say self if $!verbose;
+    }
+
+    method run { $!computer.run-program }
+
+    method tile-count(Tile $t) { +@!grid[*;*].grep($t) }
+
+    method hack-quarters(Int $count)
+    {
+        $!computer.program[0] = $count;
+    }
+
+    method Str
+    {
+        return "    Score: $!score\n" ~
+            ($!min-y .. $!max-y).map(-> $y {
+                '    ' ~
+                ($!min-x .. $!max-x).map( -> $x {
+                    @TILE[@!grid[$y;$x] // Empty]
+                }).join
+            }).join("\n");
+    }
+    method gist { self.Str }
+}
+
+multi sub MAIN(*@instructions, Bool :v(:$verbose) = False)
+{
+    # Part 1
+    my $game = ArcadeCabinet.new(:@instructions, :$verbose);
+    $game.run;
+    say $game if $verbose;
+    say "Number of block characters: ", $game.tile-count(BLOCK);
+
+    # Part 2
+    $game = ArcadeCabinet.new(:@instructions, :$verbose);
+    $game.hack-quarters(2);
+    $game.run;
+    say "Winning score: ", $game.score;
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.lines, :$verbose);
+}
+
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc13.input'), :$verbose);
+}
