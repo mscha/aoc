@@ -44,6 +44,12 @@ class NanoFactory
         }
     }
 
+    method reset
+    {
+        %!stock = Empty;
+        $!ore-consumed = 0;
+    }
+
     method produce(Str $elem, Int $count)
     {
         self.log("[Requested: $count $elem; stock is %!stock{$elem}]");
@@ -96,7 +102,7 @@ multi sub MAIN(*@reactions, Bool :v(:$verbose) = False)
     my $lower-bound = 1;
     my $upper-bound = 1;
     loop {
-        $factory = NanoFactory.new(:@reactions :$verbose);
+        $factory.reset;
         $factory.produce('FUEL', 2×$lower-bound);
         if $factory.ore-consumed > MAX-FUEL {
             $upper-bound = 2×$lower-bound;
@@ -108,7 +114,7 @@ multi sub MAIN(*@reactions, Bool :v(:$verbose) = False)
     }
     while $upper-bound > $lower-bound+1 {
         my $middle = ($upper-bound + $lower-bound) div 2;
-        $factory = NanoFactory.new(:@reactions :$verbose);
+        $factory.reset;
         $factory.produce('FUEL', $middle);
         if $factory.ore-consumed > MAX-FUEL {
             $upper-bound = $middle;
