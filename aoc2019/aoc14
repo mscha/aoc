@@ -86,7 +86,7 @@ class NanoFactory
 multi sub MAIN(*@reactions, Int :$max-ore = 1_000_000_000_000, Bool :v(:$verbose) = False)
 {
     # Part 1
-    my $factory = NanoFactory.new(:@reactions :$verbose, :stock(:ORE($max-ore)));
+    my $factory = NanoFactory.new(:@reactions, :$verbose, :stock(:ORE($max-ore)));
     $factory.consume(:FUEL(1));
     my $ore-per-fuel-unit = $max-ore - $factory.stock<ORE>;
     say "Total ORE consumption for 1 FUEL: $ore-per-fuel-unit";
@@ -95,21 +95,15 @@ multi sub MAIN(*@reactions, Int :$max-ore = 1_000_000_000_000, Bool :v(:$verbose
 
     # If k FUEL takes x ORE, then nk FUEL takes at most nx FUEL.
     # Use this to calculate the amount of fuel we can at least produce, and produce it.
-    # Repeat until there's not enough ORE left for k FUEL.
+    # Even when we think we haven't got enough ORE left, we might be mistaken, since
+    # there are still supplies in stock.  So try to produce a minimal amount of FUEL,
+    # until we get an exception because we're out of ORE.
+    my $fuel-unit = $factory.output<FUEL>;  # This many FUEL produced at once (usually 1)
     my $total-fuel = 1 + $factory.consume(:FUEL($factory.stock<FUEL>)); # leftover from part 1
-    while $factory.stock<ORE> ≥ $ore-per-fuel-unit {
-        my $fuel = $factory.stock<ORE> div $ore-per-fuel-unit × $factory.output<FUEL>;
-        $total-fuel += $factory.consume(:FUEL($fuel));
-        say "Produced $fuel more FUEL, total $total-fuel." if $verbose;
-    }
-
-    # Even though we think we haven't got enough ORE left, we might be mistaken, since
-    # there are still supplies in stock.  So try to produce more FUEL, until we get an
-    # exception because we're out of ORE.
     EXTRA:
     loop {
-        my $fuel = $factory.consume(:FUEL($factory.output<FUEL>));
-        $total-fuel += $fuel;
+        my $fuel = $factory.stock<ORE> div $ore-per-fuel-unit × $fuel-unit max $fuel-unit;
+        $total-fuel += $factory.consume(:FUEL($fuel));
         say "Produced $fuel more FUEL, total $total-fuel." if $verbose;
         CATCH {
             say "Can't produce any more FUEL, not enough ORE." if $verbose;
