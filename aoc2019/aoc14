@@ -67,7 +67,7 @@ class NanoFactory
         self.log("[Produced: $produced $elem; stock is %!stock{$elem}]");
     }
 
-    method consume(Str $elem, Int $count)
+    multi method consume(Str $elem, Int $count)
     {
         if $elem eq 'ORE' {
             $!ore-consumed += $count;
@@ -81,6 +81,11 @@ class NanoFactory
         return $count;
     }
 
+    multi method consume(*%elems)
+    {
+        return %elems.map({ self.consume($_.key, $_.value) }).sum;
+    }
+
     method log(Str $output)
     {
         say '  ' x $!verbose-indent, $output if $!verbose;
@@ -91,7 +96,7 @@ multi sub MAIN(*@reactions, Int :$max-fuel = 1_000_000_000_000, Bool :v(:$verbos
 {
     # Part 1
     my $factory = NanoFactory.new(:@reactions :$verbose);
-    $factory.consume('FUEL', 1);
+    $factory.consume(:FUEL(1));
     my $ore-per-fuel-unit = $factory.ore-consumed;
     say "Total ORE consumption for 1 FUEL: $ore-per-fuel-unit";
     
@@ -99,10 +104,10 @@ multi sub MAIN(*@reactions, Int :$max-fuel = 1_000_000_000_000, Bool :v(:$verbos
     # If k FUEL takes x ORE, then nk FUEL takes at most nx FUEL.
     # Use this to calculate the amount of fuel we can at least produce, and produce it.
     # Repeat until there's not enough ORE left for 1 FUEL.
-    my $total-fuel = 1 + $factory.consume('FUEL', $factory.stock<FUEL>);
+    my $total-fuel = 1 + $factory.consume(:FUEL($factory.stock<FUEL>)); # leftover from part 1
     while (my $ore-remaining = $max-fuel - $factory.ore-consumed) ≥ $ore-per-fuel-unit {
         my $fuel = $ore-remaining div $ore-per-fuel-unit × $factory.output<FUEL>;
-        $total-fuel += $factory.consume('FUEL', $fuel);
+        $total-fuel += $factory.consume(:FUEL($fuel));
         say "Produced $fuel more FUEL, total $total-fuel." if $verbose;
     }
     say "FUEL produced for $max-fuel ORE: $total-fuel";
