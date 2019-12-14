@@ -16,20 +16,6 @@ grammar Reaction
     token elem-out { <alpha>+ }
 }
 
-class X::NanoFactory::InvalidReaction is Exception
-{
-    has Str $.reaction;
-
-    method message { "Invalid reaction: '$!reaction'!" }
-}
-
-class X::NanoFactory::OutOfStock is Exception
-{
-    has Str $.elem;
-
-    method message { "Element '$!elem' is out of stock and cannot be produced!" }
-}
-
 class NanoFactory
 {
     has Str @.reactions;
@@ -45,7 +31,7 @@ class NanoFactory
     {
         if !%!input && @!reactions {
             for @!reactions -> $r {
-                my $ingredients = Reaction.parse($r) or die X::NanoFactory::InvalidReaction.new(:reaction($r));
+                my $ingredients = Reaction.parse($r) or die "Invalid reaction: $r";
                 my $elem-out = ~$ingredients<elem-out>;
                 my $count-out = +$ingredients<count-out>;
                 for $ingredients<elem-in> Z $ingredients<count-in> -> ($e, $c) {
@@ -65,7 +51,7 @@ class NanoFactory
         my $to-produce = $count - %!stock{$elem};
         return if $to-produce ≤ 0;
 
-        die X::NanoFactory::OutOfStock.new(:$elem) unless %!input{$elem};
+        die "Unable to produce $elem!" unless %!input{$elem};
 
         my $units = ceiling($to-produce / %!output{$elem});
         for %!input{$elem}.kv -> $e, $c {
@@ -120,8 +106,8 @@ multi sub MAIN(*@reactions, Int :$max-ore = 1_000_000_000_000, Bool :v(:$verbose
         $total-fuel += $factory.consume(:FUEL($fuel));
         say "Produced $fuel more FUEL, total $total-fuel." if $verbose;
         CATCH {
-            when X::NanoFactory::OutOfStock {
-                say "Can't produce any more FUEL: $_.message()" if $verbose;
+            when /"Unable to produce"/ {
+                say "Can't produce any more FUEL, not enough ORE." if $verbose;
                 last MORE-FUEL;
             }
         }
