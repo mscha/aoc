@@ -26,7 +26,6 @@ class NanoFactory
     has Int $!verbose-indent = 1;
 
     has Int %.stock is default(0);
-    has Int $.ore-consumed = 0;
 
     submethod TWEAK
     {
@@ -43,11 +42,7 @@ class NanoFactory
         }
     }
 
-    method reset
-    {
-        %!stock = Empty;
-        $!ore-consumed = 0;
-    }
+    method reset { %!stock = Empty }
 
     method produce(Str $elem, Int $count)
     {
@@ -55,6 +50,8 @@ class NanoFactory
 
         my $to-produce = $count - %!stock{$elem};
         return if $to-produce ≤ 0;
+
+        die "Unable to produce $elem!" unless %!input{$elem};
 
         my $units = ceiling($to-produce / %!output{$elem});
         for %!input{$elem}.kv -> $e, $c {
@@ -69,15 +66,9 @@ class NanoFactory
 
     multi method consume(Str $elem, Int $count)
     {
-        if $elem eq 'ORE' {
-            $!ore-consumed += $count;
-            self.log("[Consumed: $count ORE; total ORE consumption is $!ore-consumed]");
-        }
-        else {
-            self.produce($elem, $count);
-            %!stock{$elem} -= $count;
-            self.log("[Consumed $count $elem; stock is %!stock{$elem}]");
-        }
+        self.produce($elem, $count);
+        %!stock{$elem} -= $count;
+        self.log("[Consumed $count $elem; stock is %!stock{$elem}]");
         return $count;
     }
 
@@ -92,12 +83,12 @@ class NanoFactory
     }
 }
 
-multi sub MAIN(*@reactions, Int :$max-fuel = 1_000_000_000_000, Bool :v(:$verbose) = False)
+multi sub MAIN(*@reactions, Int :$max-ore = 1_000_000_000_000, Bool :v(:$verbose) = False)
 {
     # Part 1
-    my $factory = NanoFactory.new(:@reactions :$verbose);
+    my $factory = NanoFactory.new(:@reactions :$verbose, :stock(:ORE($max-ore)));
     $factory.consume(:FUEL(1));
-    my $ore-per-fuel-unit = $factory.ore-consumed;
+    my $ore-per-fuel-unit = $max-ore - $factory.stock<ORE>;
     say "Total ORE consumption for 1 FUEL: $ore-per-fuel-unit";
     
     # Part 2
@@ -105,20 +96,20 @@ multi sub MAIN(*@reactions, Int :$max-fuel = 1_000_000_000_000, Bool :v(:$verbos
     # Use this to calculate the amount of fuel we can at least produce, and produce it.
     # Repeat until there's not enough ORE left for 1 FUEL.
     my $total-fuel = 1 + $factory.consume(:FUEL($factory.stock<FUEL>)); # leftover from part 1
-    while (my $ore-remaining = $max-fuel - $factory.ore-consumed) ≥ $ore-per-fuel-unit {
-        my $fuel = $ore-remaining div $ore-per-fuel-unit × $factory.output<FUEL>;
+    while $factory.stock<ORE> ≥ $ore-per-fuel-unit {
+        my $fuel = $factory.stock<ORE> div $ore-per-fuel-unit × $factory.output<FUEL>;
         $total-fuel += $factory.consume(:FUEL($fuel));
         say "Produced $fuel more FUEL, total $total-fuel." if $verbose;
     }
-    say "FUEL produced for $max-fuel ORE: $total-fuel";
+    say "FUEL produced for $max-ore ORE: $total-fuel";
 }
 
-multi sub MAIN(Str $inputfile where *.IO.f, Int :$max-fuel = 1_000_000_000_000, Bool :v(:$verbose) = False)
+multi sub MAIN(Str $inputfile where *.IO.f, Int :$max-ore = 1_000_000_000_000, Bool :v(:$verbose) = False)
 {
-    MAIN($inputfile.IO.lines, :$max-fuel, :$verbose);
+    MAIN($inputfile.IO.lines, :$max-ore, :$verbose);
 }
 
-multi sub MAIN(Int :$max-fuel = 1_000_000_000_000, Bool :v(:$verbose) = False)
+multi sub MAIN(Int :$max-ore = 1_000_000_000_000, Bool :v(:$verbose) = False)
 {
-    MAIN(~$*PROGRAM.sibling('aoc14.input'), :$max-fuel, :$verbose);
+    MAIN(~$*PROGRAM.sibling('aoc14.input'), :$max-ore, :$verbose);
 }
