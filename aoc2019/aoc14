@@ -105,6 +105,12 @@ multi sub MAIN(*@reactions, Int :$max-fuel = 1_000_000_000_000, Bool :v(:$verbos
         $total-fuel += $fuel;
         say "Produced $fuel more FUEL, total $total-fuel." if $verbose;
     }
+    # Check if we produced more FUEL than we asked for, and if so, add it.
+    if $factory.stock<FUEL> {
+        $total-fuel += $factory.stock<FUEL>;
+        say "Leftover FUEL: {$factory.stock<FUEL>}, total $total-fuel." if $verbose;
+        $factory.consume('FUEL', $factory.stock<FUEL>);
+    }
     say "FUEL produced for $max-fuel ORE: $total-fuel";
 }
 
