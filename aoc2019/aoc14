@@ -92,6 +92,7 @@ multi sub MAIN(*@reactions, Int :$max-ore = 1_000_000_000_000, Bool :v(:$verbose
     say "Total ORE consumption for 1 FUEL: $ore-per-fuel-unit";
     
     # Part 2
+
     # If k FUEL takes x ORE, then nk FUEL takes at most nx FUEL.
     # Use this to calculate the amount of fuel we can at least produce, and produce it.
     # Repeat until there's not enough ORE left for k FUEL.
@@ -101,6 +102,21 @@ multi sub MAIN(*@reactions, Int :$max-ore = 1_000_000_000_000, Bool :v(:$verbose
         $total-fuel += $factory.consume(:FUEL($fuel));
         say "Produced $fuel more FUEL, total $total-fuel." if $verbose;
     }
+
+    # Even though we think we haven't got enough ORE left, we might be mistaken, since
+    # there are still supplies in stock.  So try to produce more FUEL, until we get an
+    # exception because we're out of ORE.
+    EXTRA:
+    loop {
+        my $fuel = $factory.consume(:FUEL($factory.output<FUEL>));
+        $total-fuel += $fuel;
+        say "Produced $fuel more FUEL, total $total-fuel." if $verbose;
+        CATCH {
+            say "Can't produce any more FUEL, not enough ORE." if $verbose;
+            last EXTRA;
+        }
+    }
+
     say "FUEL produced for $max-ore ORE: $total-fuel";
 }
 
