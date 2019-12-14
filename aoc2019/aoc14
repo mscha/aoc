@@ -94,7 +94,7 @@ multi sub MAIN(*@reactions, Int :$max-ore = 1_000_000_000_000, Bool :v(:$verbose
     # Part 2
     # If k FUEL takes x ORE, then nk FUEL takes at most nx FUEL.
     # Use this to calculate the amount of fuel we can at least produce, and produce it.
-    # Repeat until there's not enough ORE left for 1 FUEL.
+    # Repeat until there's not enough ORE left for k FUEL.
     my $total-fuel = 1 + $factory.consume(:FUEL($factory.stock<FUEL>)); # leftover from part 1
     while $factory.stock<ORE> ≥ $ore-per-fuel-unit {
         my $fuel = $factory.stock<ORE> div $ore-per-fuel-unit × $factory.output<FUEL>;
