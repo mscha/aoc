@@ -40,7 +40,6 @@ class NanoFactory
                     %!output{$elem-out} = $count-out;
                 }
             }
-            dd %!input, %!output if $!verbose;
         }
     }
 
