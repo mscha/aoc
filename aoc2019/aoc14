@@ -91,25 +91,20 @@ multi sub MAIN(*@reactions, Int :$max-fuel = 1_000_000_000_000, Bool :v(:$verbos
     # Part 1
     my $factory = NanoFactory.new(:@reactions :$verbose);
     $factory.consume('FUEL', 1);
-    my $ore-for-one-fuel = $factory.ore-consumed;
-    say "Total ORE consumption for 1 FUEL: $ore-for-one-fuel";
+    my $ore-per-fuel-unit = $factory.ore-consumed;
+    say "Total ORE consumption for 1 FUEL: $ore-per-fuel-unit";
     
     # Part 2
-    # If 1 FUEL takes x ORE, then n FUEL takes at most nx FUEL.
+    # If k FUEL takes x ORE, then nk FUEL takes at most nx FUEL.
     # Use this to calculate the amount of fuel we can at least produce, and produce it.
     # Repeat until there's not enough ORE left for 1 FUEL.
-    my $total-fuel = 1;
-    while (my $ore-remaining = $max-fuel - $factory.ore-consumed) ≥ $ore-for-one-fuel {
-        my $fuel = $ore-remaining div $ore-for-one-fuel;
+    my $total-fuel = 1 + $factory.stock<FUEL>;
+    $factory.consume('FUEL', $factory.stock<FUEL>);
+    while (my $ore-remaining = $max-fuel - $factory.ore-consumed) ≥ $ore-per-fuel-unit {
+        my $fuel = $ore-remaining div $ore-per-fuel-unit × $factory.output<FUEL>;
         $factory.consume('FUEL', $fuel);
         $total-fuel += $fuel;
         say "Produced $fuel more FUEL, total $total-fuel." if $verbose;
-    }
-    # Check if we produced more FUEL than we asked for, and if so, add it.
-    if $factory.stock<FUEL> {
-        $total-fuel += $factory.stock<FUEL>;
-        say "Leftover FUEL: {$factory.stock<FUEL>}, total $total-fuel." if $verbose;
-        $factory.consume('FUEL', $factory.stock<FUEL>);
     }
     say "FUEL produced for $max-fuel ORE: $total-fuel";
 }
