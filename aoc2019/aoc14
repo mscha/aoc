@@ -100,18 +100,7 @@ multi sub MAIN(*@reactions, Bool :v(:$verbose) = False)
     # consumption stays under one trillion
     constant MAX-FUEL = 1_000_000_000_000;
     my $lower-bound = 1;
-    my $upper-bound = 1;
-    loop {
-        $factory.reset;
-        $factory.produce('FUEL', 2×$lower-bound);
-        if $factory.ore-consumed > MAX-FUEL {
-            $upper-bound = 2×$lower-bound;
-            last;
-        }
-        else {
-            $lower-bound ×= 2;
-        }
-    }
+    my $upper-bound = ceiling(MAX-FUEL / $factory.ore-consumed);
     while $upper-bound > $lower-bound+1 {
         my $middle = ($upper-bound + $lower-bound) div 2;
         $factory.reset;
