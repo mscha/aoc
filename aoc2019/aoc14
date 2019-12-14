@@ -1,0 +1,131 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 14 -- https://adventofcode.com/2019/day/14
+
+$*OUT.out-buffer = False;   # Autoflush
+
+grammar Reaction
+{
+    rule TOP { [ <count-in> <elem-in> ]+ % ',' '=>' <count-out> <elem-out> }
+
+    token count-in { \d+}
+    token count-out { \d+}
+
+    token elem-in { <alpha>+ }
+    token elem-out { <alpha>+ }
+}
+
+class NanoFactory
+{
+    has Str @.reactions;
+    has %.input;
+    has %.output;
+
+    has Bool $.verbose = False;
+    has Int $!verbose-indent = 0;
+
+    has Int %.stock is default(0);
+    has Int $.ore-consumed = 0;
+
+    submethod TWEAK
+    {
+        if !%!input && @!reactions {
+            for @!reactions -> $r {
+                my $ingredients = Reaction.parse($r) or die "Invalid reaction: $r";
+                my $elem-out = ~$ingredients<elem-out>;
+                my $count-out = +$ingredients<count-out>;
+                for $ingredients<elem-in> Z $ingredients<count-in> -> ($e, $c) {
+                    %!input{$elem-out}{$e} = +$c;
+                    %!output{$elem-out} = $count-out;
+                }
+            }
+            dd %!input, %!output if $!verbose;
+        }
+    }
+
+    method produce(Str $elem, Int $count)
+    {
+        self.log("[Requested: $count $elem; stock is %!stock{$elem}]");
+
+        my $to-produce = $count - %!stock{$elem};
+        return if $to-produce ≤ 0;
+
+        my $units = ceiling($to-produce / %!output{$elem});
+        for %!input{$elem}.kv -> $e, $c {
+            self.consume($e, $units × $c);
+        }
+
+        my $produced = $units × %!output{$elem};
+        %!stock{$elem} += $produced;
+        self.log("[Produced: $produced $elem; stock is %!stock{$elem}]");
+    }
+
+    method consume(Str $elem, Int $count)
+    {
+        $!verbose-indent++;
+        if $elem eq 'ORE' {
+            $!ore-consumed += $count;
+            self.log("[Consumed: $count ORE; total ORE consumption is $!ore-consumed]");
+        }
+        else {
+            self.produce($elem, $count);
+            %!stock{$elem} -= $count;
+            self.log("[Consumed $count $elem; stock is %!stock{$elem}]");
+        }
+        $!verbose-indent--;
+    }
+
+    method log(Str $output)
+    {
+        say '  ' x $!verbose-indent, $output if $!verbose;
+    }
+}
+
+multi sub MAIN(*@reactions, Bool :v(:$verbose) = False)
+{
+    # Part 1
+    my $factory = NanoFactory.new(:@reactions :$verbose);
+    $factory.produce('FUEL', 1);
+    say "Total ORE consumption for 1 FUEL: ", $factory.ore-consumed;
+    
+    # Part 2
+    # Do a binary search to find the largest amount of fuel we can produce where the ore
+    # consumption stays under one trillion
+    constant MAX-FUEL = 1_000_000_000_000;
+    my $lower-bound = 1;
+    my $upper-bound = 1;
+    loop {
+        $factory = NanoFactory.new(:@reactions :$verbose);
+        $factory.produce('FUEL', 2×$lower-bound);
+        if $factory.ore-consumed > MAX-FUEL {
+            $upper-bound = 2×$lower-bound;
+            last;
+        }
+        else {
+            $lower-bound ×= 2;
+        }
+    }
+    while $upper-bound > $lower-bound+1 {
+        my $middle = ($upper-bound + $lower-bound) div 2;
+        $factory = NanoFactory.new(:@reactions :$verbose);
+        $factory.produce('FUEL', $middle);
+        if $factory.ore-consumed > MAX-FUEL {
+            $upper-bound = $middle;
+        }
+        else {
+            $lower-bound = $middle;
+        }
+    }
+    say "FUEL produced for {MAX-FUEL} ORE: $lower-bound";
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.lines, :$verbose);
+}
+
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc14.input'), :$verbose);
+}
