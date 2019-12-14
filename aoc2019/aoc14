@@ -87,50 +87,32 @@ class NanoFactory
     }
 }
 
-multi sub MAIN(*@reactions, Bool :v(:$verbose) = False)
+multi sub MAIN(*@reactions, Int :$max-fuel = 1_000_000_000_000, Bool :v(:$verbose) = False)
 {
     # Part 1
     my $factory = NanoFactory.new(:@reactions :$verbose);
     $factory.produce('FUEL', 1);
-    say "Total ORE consumption for 1 FUEL: ", $factory.ore-consumed;
+    my $ore-for-one-fuel = $factory.ore-consumed;
+    say "Total ORE consumption for 1 FUEL: $ore-for-one-fuel";
     
     # Part 2
-    # Do a binary search to find the largest amount of fuel we can produce where the ore
-    # consumption stays under one trillion
-    constant MAX-FUEL = 1_000_000_000_000;
-    my $lower-bound = ceiling(MAX-FUEL / $factory.ore-consumed);
-    my $upper-bound;
-    loop {
-        $factory.reset;
-        $factory.produce('FUEL', 2×$lower-bound);
-        if $factory.ore-consumed > MAX-FUEL {
-            $upper-bound = 2×$lower-bound;
-            last;
-        }
-        else {
-            $lower-bound ×= 2;
-        }
+    # If 1 FUEL takes x ORE, then n FUEL takes at most nx FUEL.
+    # Use this to calculate the amount of fuel we can at least produce, and produce it.
+    # Repeat until there's not enough ORE left for 1 FUEL.
+    my $fuel-produced = 1;
+    while (my $ore-remaining = $max-fuel - $factory.ore-consumed) ≥ $ore-for-one-fuel {
+        $fuel-produced += $ore-remaining div $ore-for-one-fuel;
+        $factory.produce('FUEL', $fuel-produced);
     }
-    while $upper-bound > $lower-bound+1 {
-        my $middle = ($upper-bound + $lower-bound) div 2;
-        $factory.reset;
-        $factory.produce('FUEL', $middle);
-        if $factory.ore-consumed > MAX-FUEL {
-            $upper-bound = $middle;
-        }
-        else {
-            $lower-bound = $middle;
-        }
-    }
-    say "FUEL produced for {MAX-FUEL} ORE: $lower-bound";
+    say "FUEL produced for $max-fuel ORE: $fuel-produced";
 }
 
-multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
+multi sub MAIN(Str $inputfile where *.IO.f, Int :$max-fuel = 1_000_000_000_000, Bool :v(:$verbose) = False)
 {
-    MAIN($inputfile.IO.lines, :$verbose);
+    MAIN($inputfile.IO.lines, :$max-fuel, :$verbose);
 }
 
-multi sub MAIN(Bool :v(:$verbose) = False)
+multi sub MAIN(Int :$max-fuel = 1_000_000_000_000, Bool :v(:$verbose) = False)
 {
-    MAIN(~$*PROGRAM.sibling('aoc14.input'), :$verbose);
+    MAIN(~$*PROGRAM.sibling('aoc14.input'), :$max-fuel, :$verbose);
 }
