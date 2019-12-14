@@ -23,7 +23,7 @@ class NanoFactory
     has %.output;
 
     has Bool $.verbose = False;
-    has Int $!verbose-indent = 0;
+    has Int $!verbose-indent = 1;
 
     has Int %.stock is default(0);
     has Int $.ore-consumed = 0;
@@ -58,6 +58,7 @@ class NanoFactory
 
         my $units = ceiling($to-produce / %!output{$elem});
         for %!input{$elem}.kv -> $e, $c {
+            temp $!verbose-indent; $!verbose-indent++;
             self.consume($e, $units × $c);
         }
 
@@ -68,7 +69,6 @@ class NanoFactory
 
     method consume(Str $elem, Int $count)
     {
-        $!verbose-indent++;
         if $elem eq 'ORE' {
             $!ore-consumed += $count;
             self.log("[Consumed: $count ORE; total ORE consumption is $!ore-consumed]");
@@ -78,7 +78,6 @@ class NanoFactory
             %!stock{$elem} -= $count;
             self.log("[Consumed $count $elem; stock is %!stock{$elem}]");
         }
-        $!verbose-indent--;
     }
 
     method log(Str $output)
@@ -91,7 +90,7 @@ multi sub MAIN(*@reactions, Int :$max-fuel = 1_000_000_000_000, Bool :v(:$verbos
 {
     # Part 1
     my $factory = NanoFactory.new(:@reactions :$verbose);
-    $factory.produce('FUEL', 1);
+    $factory.consume('FUEL', 1);
     my $ore-for-one-fuel = $factory.ore-consumed;
     say "Total ORE consumption for 1 FUEL: $ore-for-one-fuel";
     
@@ -99,12 +98,14 @@ multi sub MAIN(*@reactions, Int :$max-fuel = 1_000_000_000_000, Bool :v(:$verbos
     # If 1 FUEL takes x ORE, then n FUEL takes at most nx FUEL.
     # Use this to calculate the amount of fuel we can at least produce, and produce it.
     # Repeat until there's not enough ORE left for 1 FUEL.
-    my $fuel-produced = 1;
+    my $total-fuel = 1;
     while (my $ore-remaining = $max-fuel - $factory.ore-consumed) ≥ $ore-for-one-fuel {
-        $fuel-produced += $ore-remaining div $ore-for-one-fuel;
-        $factory.produce('FUEL', $fuel-produced);
+        my $fuel = $ore-remaining div $ore-for-one-fuel;
+        $factory.consume('FUEL', $fuel);
+        $total-fuel += $fuel;
+        say "Produced $fuel more FUEL, total $total-fuel." if $verbose;
     }
-    say "FUEL produced for $max-fuel ORE: $fuel-produced";
+    say "FUEL produced for $max-fuel ORE: $total-fuel";
 }
 
 multi sub MAIN(Str $inputfile where *.IO.f, Int :$max-fuel = 1_000_000_000_000, Bool :v(:$verbose) = False)
