@@ -98,8 +98,19 @@ multi sub MAIN(*@reactions, Bool :v(:$verbose) = False)
     # Do a binary search to find the largest amount of fuel we can produce where the ore
     # consumption stays under one trillion
     constant MAX-FUEL = 1_000_000_000_000;
-    my $lower-bound = 1;
-    my $upper-bound = ceiling(MAX-FUEL / $factory.ore-consumed);
+    my $lower-bound = ceiling(MAX-FUEL / $factory.ore-consumed);
+    my $upper-bound;
+    loop {
+        $factory.reset;
+        $factory.produce('FUEL', 2×$lower-bound);
+        if $factory.ore-consumed > MAX-FUEL {
+            $upper-bound = 2×$lower-bound;
+            last;
+        }
+        else {
+            $lower-bound ×= 2;
+        }
+    }
     while $upper-bound > $lower-bound+1 {
         my $middle = ($upper-bound + $lower-bound) div 2;
         $factory.reset;
