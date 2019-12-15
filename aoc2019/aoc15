@@ -1,0 +1,221 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 15 -- https://adventofcode.com/2019/day/15
+
+use lib $*PROGRAM.parent;
+use ShipComputer;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+enum Direction (:N(1), :S(2), :W(3), :E(4));
+enum StatusCode <BLOCKED MOVED FOUND>;
+enum Tile <WALL PATH UNKNOWN OXYGEN DROID OXYGENDROID STARTPOS OXYGENIZED>;
+constant @TILE = '█', ' ', '▓', '●', '○', '◉', 's', '░';
+
+class RepairDroid
+{
+    has Str @.instructions;
+    has Bool $.verbose = False;
+
+    has Complex $.droid-pos = 0+0i;
+    has Complex $.oxygen-pos;
+
+    has Tile %.grid{Complex} is default(UNKNOWN) = $!droid-pos => PATH;
+    has Int $!min-x = 0;
+    has Int $!max-x = 0;
+    has Int $!min-y = 0;
+    has Int $!max-y = 0;
+
+    has Direction $.pending-dir;
+    has Direction $.last-dir = N;
+
+    has Direction @.path-to-oxygen;
+
+    has ShipComputer $!computer .= new(
+        :@!instructions,
+        input-handler => sub { self.get-movement },
+        output-handler => sub ($v) { self.report-status($v) },
+    );
+
+    my %DIR-VALUE{Direction} = N,-i, S,i, W,-1, E,1;
+
+    my %LEFT{Direction}     = N,W, S,E, W,S, E,N;
+    my %RIGHT{Direction}    = N,E, S,W, W,N, E,S;
+    my %BACK{Direction}     = N,S, S,N, W,E, E,W;
+    my %STRAIGHT{Direction} = N,N, S,S, W,W, E,E;
+
+    sub neighbours(Complex $z)
+    {
+        return $z + 1, $z - 1, $z + i, $z - i;
+    }
+
+    method run
+    {
+        $!computer.run-program;
+    }
+
+    # Follow-the-wall algorithm
+    # https://en.wikipedia.org/wiki/Maze_solving_algorithm#Wall_follower
+    method get-movement
+    {
+        # Try to keep right: find the rightmost direction that isn't a wall
+        my @dirs = %RIGHT{$!last-dir}, %STRAIGHT{$!last-dir}, %LEFT{$!last-dir}, %BACK{$!last-dir};
+        $!pending-dir = @dirs.first({ %!grid{self.droid-pos-after-move($_)} != WALL });
+        say "> Input: $!pending-dir" if $!verbose;
+        return $!pending-dir;
+    }
+
+    # Random Mouse algorithm
+    # https://en.wikipedia.org/wiki/Maze_solving_algorithm#Random_mouse_algorithm
+    # Too slow, so no longer used.
+    method get-movement-old
+    {
+        # If possible, pick a direction where we don't know the status
+        if my @unknown = (N,S,W,E).grep({ %!grid{self.droid-pos-after-move($_)} == UNKNOWN }) {
+            $!pending-dir = @unknown.pick;
+        }
+
+        # Otherwise, pick a direction that isn't blocked
+        elsif my @path = (N,S,W,E).grep({ %!grid{self.droid-pos-after-move($_)} ≠ WALL }) {
+            $!pending-dir = @path.pick;
+        }
+
+        # Otherwise (shouldn't happen), just pick a random direction
+        else {
+            $!pending-dir = (N,S,W,E).pick;
+        }
+
+        say "> Input: $!pending-dir" if $!verbose;
+        return $!pending-dir;
+    }
+
+    method report-status($v)
+    {
+        my $status = StatusCode($v);
+        say "> Status: $status" if $!verbose;
+        given $status {
+            when BLOCKED {
+                # Path is blocked, so keep track of the wall
+                %!grid{$.droid-pos-after-move} = WALL;
+            }
+            when MOVED {
+                # Path is open, so move our position and keep track of the path.
+                self.move-droid($!pending-dir) if $!pending-dir.defined;
+                %!grid{$!droid-pos} = PATH;
+                $!last-dir = $!pending-dir;
+
+                # If we're back where we started, and we have no unknown neighbours,
+                # we mapped the entire grid, so we can stop the program.
+                # Note: this assumes a simply-connected maze!
+                if $!droid-pos == 0 && none(%!grid{neighbours($!droid-pos)}) eq UNKNOWN {
+                    $!computer.halt
+                }
+
+            }
+            when FOUND {
+                # Path is open and we found the oxygen system, so move our position and keep
+                # track of the path, and also remember the position of the oxygen system.
+                self.move-droid($!pending-dir) if $!pending-dir.defined;
+                %!grid{$!droid-pos} = PATH;
+                $!oxygen-pos = $!droid-pos;
+                $!last-dir = $!pending-dir;
+            }
+        }
+
+        $!pending-dir = Nil;
+        say self if $!verbose;
+    }
+
+    method droid-pos-after-move(Direction $d = $!pending-dir)
+    {
+        my $pos = $!droid-pos + %DIR-VALUE{$d};
+
+        # Keep track of the size of the grid
+        $!min-x min= $pos.re.Int;
+        $!max-x max= $pos.re.Int;
+        $!min-y min= $pos.im.Int;
+        $!max-y max= $pos.im.Int;
+
+        return $pos;
+    }
+
+    method move-droid(Direction $d)
+    {
+        $!droid-pos = self.droid-pos-after-move($d);
+        
+        # Keep track of the path to the oxygen system if we haven't found it yet
+        if !$!oxygen-pos.defined {
+            if @!path-to-oxygen && $d == %BACK{@!path-to-oxygen.tail} {
+                # Reverse
+                @!path-to-oxygen.pop;
+            }
+            else {
+                # Forward
+                @!path-to-oxygen.push($d);
+            }
+        }
+    }
+
+    method flood-with-oxygen
+    {
+        # Initially, the location of the oxygen system is oxygenized
+        my $elapsed = 0;
+        %!grid{$!oxygen-pos} = OXYGENIZED;
+
+        # Repeat while there's unoxygenized path left
+        while (my @unoxygenized = %!grid.grep(*.value == PATH)».key) {
+            say "> After $elapsed seconds, {+@unoxygenized} unoxygenized left" if $!verbose;
+            my @to-oxygenize = @unoxygenized.grep: -> $z {
+                any(%!grid{neighbours($z)}) == OXYGENIZED|OXYGEN|OXYGENDROID
+            };
+            %!grid{$_} = OXYGENIZED for @to-oxygenize;
+            $elapsed++;
+            say self if $!verbose;
+        }
+
+        return $elapsed;
+    }
+
+    method tile(Int $x, Int $y)
+    {
+        my $z = $x + $y×i;
+        return @TILE[STARTPOS] if $z == 0;
+        return $!oxygen-pos.defined && $!oxygen-pos == $z
+                ?? $!droid-pos == $z ?? @TILE[OXYGENDROID] !! @TILE[OXYGEN]
+                !! $!droid-pos == $z ?? @TILE[DROID] !! @TILE[%!grid{$z}];
+    }
+
+    method Str
+    {
+        return ($!min-y-1 .. $!max-y+1).map(-> $y {
+                '    ' ~
+                ($!min-x-1 .. $!max-x+1).map( -> $x {
+                    self.tile($x,$y)
+                }).join
+            }).join("\n");
+    }
+    method gist { self.Str }
+}
+
+multi sub MAIN(*@instructions, Bool :v(:$verbose) = False)
+{
+    # Part 1
+    my $robot = RepairDroid.new(:@instructions, :$verbose);
+    $robot.run;
+    say "Path to oxygen system: ", $robot.path-to-oxygen.join if $verbose;
+    say "Length of path to oxygen system: ", +$robot.path-to-oxygen;
+
+    # Part 2
+    say "Time until flooded with oxygen: ", $robot.flood-with-oxygen;
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.lines, :$verbose);
+}
+
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc15.input'), :$verbose);
+}
