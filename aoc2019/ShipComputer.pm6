@@ -130,7 +130,7 @@ class ShipComputer
         INSTRUCTION:
         loop {
             if $!halt-requested {
-                say ">> HLT requested";
+                say ">> HLT requested" if $!verbose;
                 last INSTRUCTION;
             }
 
