@@ -10,13 +10,13 @@ class ShipComputer
     has Int @.input;
     has Int @.output;
 
+    has Bool $.interrupt is rw = False;
+
     has Bool $.debug = False;
     has Bool $.verbose = False;
 
     has Int $!pos = 0;
     has Int $!relative-base = 0;
-
-    has Bool $!halt-requested = False;
 
     has Int @!initial-program;
     has Int @!initial-input;
@@ -74,11 +74,6 @@ class ShipComputer
         @!output = ();
     }
 
-    method halt
-    {
-        $!halt-requested = True;
-    }
-
     method opcode
     {
         return @!program[$!pos] % 100;
@@ -129,8 +124,9 @@ class ShipComputer
         say "< @!program[] >" if $!debug;
         INSTRUCTION:
         loop {
-            if $!halt-requested {
-                say ">> HLT requested" if $!verbose;
+            if $!interrupt {
+                say ">> Interrupted" if $!verbose;
+                $!interrupt = False;
                 last INSTRUCTION;
             }
 
@@ -154,8 +150,9 @@ class ShipComputer
                 }
                 when INP {
                     my $val = &!input-handler();
-                    if $!halt-requested {
-                        say ">> HLT requested";
+                    if $!interrupt {
+                        say ">> Interrupted" if $!verbose;
+                        $!interrupt = False;
                         last INSTRUCTION;
                     }
                     say ">> $!pos: INP - [$.param-ptr(1)] := $val" if $!verbose;

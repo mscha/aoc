@@ -109,7 +109,7 @@ class RepairDroid
                 # we mapped the entire grid, so we can stop the program.
                 # Note: this assumes a simply-connected maze!
                 if $!droid-pos == 0 && none(%!grid{neighbours($!droid-pos)}) eq UNKNOWN {
-                    $!computer.halt
+                    $!computer.interrupt = True;
                 }
 
             }
