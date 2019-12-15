@@ -16,6 +16,8 @@ class ShipComputer
     has Int $!pos = 0;
     has Int $!relative-base = 0;
 
+    has Bool $!halt-requested = False;
+
     has Int @!initial-program;
     has Int @!initial-input;
 
@@ -72,6 +74,11 @@ class ShipComputer
         @!output = ();
     }
 
+    method halt
+    {
+        $!halt-requested = True;
+    }
+
     method opcode
     {
         return @!program[$!pos] % 100;
@@ -122,6 +129,11 @@ class ShipComputer
         say "< @!program[] >" if $!debug;
         INSTRUCTION:
         loop {
+            if $!halt-requested {
+                say ">> HLT requested";
+                last INSTRUCTION;
+            }
+
             die "Invalid program position $!pos" unless 0 ≤ $!pos < @!program;
             given $.opcode {
                 when ADD {
@@ -142,6 +154,10 @@ class ShipComputer
                 }
                 when INP {
                     my $val = &!input-handler();
+                    if $!halt-requested {
+                        say ">> HLT requested";
+                        last INSTRUCTION;
+                    }
                     say ">> $!pos: INP - [$.param-ptr(1)] := $val" if $!verbose;
                     $.param(1) = $val;
                     $!pos += 2;
