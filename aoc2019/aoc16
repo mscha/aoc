@@ -1,0 +1,80 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 16 -- https://adventofcode.com/2019/day/16
+
+$*OUT.out-buffer = False;   # Autoflush
+
+class FlawedFrequencyTransmission
+{
+    has Str $.signal;
+    has Int $.repeat = 1;
+
+    has Bool $.verbose = False;
+
+    method total-length { $!signal.chars × $!repeat }
+
+    # Naive implementation.  Way too slow and memory inefficient for part two
+    method apply-phases(Int $n = 1)
+    {
+        for 1..$n -> $k {
+            $!signal = gather for 1..$!signal.chars -> $i {
+                my @pattern = flat (0 xx $i, 1 xx $i, 0 xx $i, -1 xx $i) xx *;
+                @pattern.shift;
+                take abs(($!signal.comb Z× @pattern).sum) % 10;
+            }.join;
+            say "After $k phase application(s), the signal is: $!signal" if $!verbose;
+        }
+    }
+
+    # Optimized implementation for part 2.
+    # Note that, if a digit is in the second half of the (repeated) signal, then
+    # a phase application for that digit is simply the sum of all digits in the signal from
+    # that point on.
+    method message-after-applying-phases(Int $start, Int $length, Int $n)
+    {
+        if $start < $!signal.chars × $!repeat / 2 {
+            die "Sorry, we don't have an efficient algorithm for digits in the first half!";
+        }
+
+        # Determine the "tail" of the (repeated) signal, starting at $start
+        my ($part, $whole) = ($.total-length - $start).polymod($!signal.chars);
+        my int @tail = ($!signal.substr(*-$part) ~ $!signal x $whole).comb».Int;
+
+        # Apply n phase changes
+        for 1..$n -> $k {
+            # Add the last digit to the second-last (modulo 10)
+            # Add the second-last digit to the third-last (modulo 10)
+            # ...
+            for @tail.end ... 1 -> $i {
+                @tail[$i-1] = (@tail[$i-1] + @tail[$i]) % 10;
+            }
+            say "After $k phase application(s), the message is: ", @tail.head($length).join if $!verbose;
+        }
+
+        return @tail.head($length).join;
+    }
+}
+
+multi sub MAIN(Str $input, Bool :v(:$verbose) = False)
+{
+    # Part 1
+    my $fft = FlawedFrequencyTransmission.new(:signal($input), :$verbose);
+    $fft.apply-phases(100);
+    say "The first 8 digits after 100 phases: ", $fft.signal.substr(0, 8);
+    
+    # Part 2
+    $fft = FlawedFrequencyTransmission.new(:signal($input), :repeat(10_000), :$verbose);
+    my $start = +$input.substr(0,7);
+    say "The message in the final output is: ", $fft.message-after-applying-phases($start, 8, 100);
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.slurp.trim, :$verbose);
+}
+
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc16.input'), :$verbose);
+}
