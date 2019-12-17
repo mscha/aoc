@@ -1,0 +1,286 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 17 -- https://adventofcode.com/2019/day/17
+
+use lib $*PROGRAM.parent;
+use ShipComputer;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+class ASCII
+{
+    has Str @.instructions;
+
+    has Bool $.verbose = False;
+
+    has Str $.map;
+    has @.grid;
+    has Int $.width;
+    has Int $.height;
+
+    has Int $.robot-x;
+    has Int $.robot-y;
+    has Str $.robot-orientation;
+
+    has @.path;
+    has @.path-a;
+    has @.path-b;
+    has @.path-c;
+    has @.path-main;
+
+    has $.computer = ShipComputer.new(:@!instructions);
+
+    constant ROBOT-CHARS = set '^', 'v', '<', '>';
+    constant SCAFFOLD-CHARS = set '#', '^', 'v', '<', '>';
+
+    constant %TURNS = '^' => { '^'=>'', '>'=>'R', 'v'=>'RR', '<' => 'L' },
+                      '>' => { '^'=>'L', '>'=>'', 'v'=>'R', '<' => 'RR' },
+                      'v' => { '^'=>'RR', '>'=>'L', 'v'=>'', '<' => 'R' },
+                      '<' => { '^'=>'R', '>'=>'RR', 'v'=>'L', '<' => '' };
+    constant %LEFT =  '^' => '<', '>' => '^', 'v' => '>', '<' => 'v';
+    constant %RIGHT = '^' => '>', '>' => 'v', 'v' => '<', '<' => '^';
+    constant %MOVE =  '^' => (0,-1), '>' => (1,0), 'v' => (0,1), '<' => (-1,0);
+
+    submethod TWEAK
+    {
+        # Generate the map and grid
+        $!computer.run-program;
+        $!map = $!computer.output».chr.join.trim;
+        @!grid = $!map.comb(/\S+/)».comb;
+        $!height = +@!grid;
+        $!width = +@!grid[0];
+
+        # Find the vacuum robot and its orientation
+        ($!robot-x, $!robot-y) = (^$!width X ^$!height).first(-> ($x, $y) { self.is-robot($x, $y) });
+        $!robot-orientation = @!grid[$!robot-y;$!robot-x];
+    }
+
+    method is-robot(Int $x, Int $y)
+    {
+        # Must be within the grid
+        return False unless 0 ≤ $x < $!width && 0 ≤ $y < $!height;
+
+        return @!grid[$y;$x] ∈ ROBOT-CHARS
+    }
+
+    method is-scaffold(Int $x, Int $y)
+    {
+        # Must be within the grid
+        return False unless 0 ≤ $x < $!width && 0 ≤ $y < $!height;
+
+        return @!grid[$y;$x] ∈ SCAFFOLD-CHARS
+    }
+
+    method is-intersection(Int $x, Int $y)
+    {
+        # Itself and all its neighbours must be a scaffold
+        return self.is-scaffold($x, $y) &&
+               self.is-scaffold($x-1, $y) && self.is-scaffold($x+1, $y) &&
+               self.is-scaffold($x, $y-1) && self.is-scaffold($x, $y+1);
+    }
+
+    method intersections
+    {
+        return (^$!width X ^$!height).grep(-> ($x, $y) { self.is-intersection($x, $y) });
+    }
+
+    method total-intersection-alignment
+    {
+        return self.intersections.map(-> ($x, $y) { $x × $y }).sum;
+    }
+
+    method find-path
+    {
+        my ($x, $y) = ($!robot-x, $!robot-y);
+        my $orientation = $!robot-orientation;
+
+        # Find our first direction
+        my $dir = self.is-scaffold($x+1, $y) ?? '>'
+               !! self.is-scaffold($x-1, $y) ?? '<'
+               !! self.is-scaffold($x, $y+1) ?? 'v'
+               !! self.is-scaffold($x, $y-1) ?? '^'
+               !! die "No scaffold neighbour found at $x,$y!";
+        @!path.append: %TURNS{$orientation}{$dir}.comb;
+
+        # Repeat until we're at a dead end
+        loop {
+            # Move forward as long as we can
+            my $count = 0;
+            my ($dx, $dy) = %MOVE{$dir};
+            while self.is-scaffold($x+$dx, $y+$dy) {
+                $x += $dx;
+                $y += $dy;
+                $count++;
+            }
+            @!path.append($count) if $count;
+
+            # Turn left or right if we can
+            if self.is-scaffold(|(($x, $y) Z+ %MOVE{%LEFT{$dir}})) {
+                @!path.append: %TURNS{$dir}{%LEFT{$dir}}.comb;
+                $dir = %LEFT{$dir};
+            }
+            elsif self.is-scaffold(|(($x, $y) Z+ %MOVE{%RIGHT{$dir}})) {
+                @!path.append: %TURNS{$dir}{%RIGHT{$dir}}.comb;
+                $dir = %RIGHT{$dir};
+            }
+            else {
+                # Dead end, we're done
+                last;
+            }
+        }
+
+        say ">> Found path with length {+@!path}: ", @!path.join(',') if $!verbose;
+    }
+
+    method subpath(Int $start, Int $length)
+    {
+        return @!path[$start ..^ $start+$length];
+    }
+
+    method matching-subpaths(Int $start1, Int $start2, Int $length)
+    {
+        return self.subpath($start1, $length) eqv self.subpath($start2, $length);
+    }
+
+    method repeating-subpaths(Int $start, Int $max-length)
+    {
+        # TODO hacky solution: only search for subpaths of length 6 to 8, which happens to work on my input.  
+        loop (my $l = min(8, $max-length); $l ≥ 6; $l--) {
+            my @p = ($start + $l .. @!path - $l).grep(-> $i { self.matching-subpaths($i, $start, $l) });
+            return flat $l, $start, @p if @p;
+        }
+
+        # Haven't found anything? Then just return the whole thing
+        return $max-length, $start;
+    }
+
+    method split-path
+    {
+        # First, find the path, if we haven't already.
+        self.find-path unless @!path;
+
+        # We need to find three repeating sub-paths that repeat and can generate the given path
+        # Start by finding the longest repeating sub-path starting at 0
+        my $pos = 0;
+        my $a-max-length = +@!path - $pos;
+        my ($a-length, @a-start) = self.repeating-subpaths($pos, $a-max-length);
+        @!path-a = self.subpath($pos, $a-length);
+        say ">> Subpattern A = @!path-a.join(',') at position(s) @a-start.join(',')" if $!verbose;
+
+        # Skip known subpaths
+        loop {
+            if $pos ∈ @a-start {
+                @!path-main.append: 'A';
+                $pos += $a-length;
+            }
+            else {
+                last;
+            }
+        }
+
+        # Find the second repeating subpath at the current position
+        # Make sure we don't run into an existing A subpath
+        my $b-max-length = min(flat +@!path, @a-start.grep(* > $pos)) - $pos;
+        my ($b-length, @b-start) = self.repeating-subpaths($pos, $b-max-length);
+        @!path-b = self.subpath($pos, $b-length);
+        say ">> Subpattern B = @!path-b.join(',') at position(s) @b-start.join(',')" if $!verbose;
+
+        # Skip known subpaths
+        loop {
+            if $pos ∈ @a-start {
+                @!path-main.append: 'A';
+                $pos += $a-length;
+            }
+            elsif $pos ∈ @b-start {
+                @!path-main.append: 'B';
+                $pos += $b-length;
+            }
+            else {
+                last;
+            }
+        }
+
+        # Find the third repeating subpath at the current position
+        # Make sure we don't run into an existing A or B subpath
+        my $c-max-length = min(flat +@!path, @a-start.grep(* > $pos), @b-start.grep(* > $pos)) - $pos;
+        my ($c-length, @c-start) = self.repeating-subpaths($pos, $c-max-length);
+        @!path-c = self.subpath($pos, $c-length);
+        say ">> Subpattern C = @!path-c.join(',') at position(s) @c-start.join(',')" if $!verbose;
+
+        # Skip known subpaths
+        loop {
+            if $pos ∈ @a-start {
+                @!path-main.append: 'A';
+                $pos += $a-length;
+            }
+            elsif $pos ∈ @b-start {
+                @!path-main.append: 'B';
+                $pos += $b-length;
+            }
+            elsif $pos ∈ @c-start {
+                @!path-main.append: 'C';
+                $pos += $c-length;
+            }
+            else {
+                last;
+            }
+        }
+        say ">> Main routine: @!path-main.join(',')" if $!verbose;
+
+        # Are we done?  If not, give up
+        die "Sorry, can't find valid subpaths!" unless $pos == +@!path;
+    }
+
+    method add-computer-input(*@elems)
+    {
+        my $str = @elems.join(',') ~ "\n";
+        die "Computer input '$str.trim()' too long!" if $str.chars > 21;
+        $!computer.input.append: $str.ords;
+    }
+
+    method rescue-mission
+    {
+        # Find the path and split it up in subpaths
+        self.find-path;
+        self.split-path;
+
+        # Set the computer into wake mode
+        $!computer.reset;
+        $!computer.poke(0, 2);
+
+        # Set the computer's input
+        self.add-computer-input(@!path-main);
+        self.add-computer-input(@!path-a);
+        self.add-computer-input(@!path-b);
+        self.add-computer-input(@!path-c);
+        self.add-computer-input('n');   # No continuous feed
+
+        # Run the robot and return its final output
+        $!computer.run-program;
+        return $!computer.output.tail;
+    }
+}
+
+multi sub MAIN(*@instructions, Bool :v(:$verbose) = False)
+{
+    # Part 1
+    my $ascii = ASCII.new(:@instructions, :$verbose);
+    say $ascii.map if $verbose;
+    say "Intersections: ", $ascii.intersections if $verbose;
+    say "The sum of the alignment parameters of the intersections is: ",
+        $ascii.total-intersection-alignment;
+
+    # Part 2
+    say "Amount of dust collected: ", $ascii.rescue-mission;
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.lines, :$verbose);
+}
+
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc17.input'), :$verbose);
+}
