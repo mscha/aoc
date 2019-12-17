@@ -12,6 +12,7 @@ class ASCII
 {
     has Str @.instructions;
 
+    has Int $.max-input-length = 20;
     has Bool $.verbose = False;
 
     has Str $.map;
@@ -143,15 +144,19 @@ class ASCII
         return self.subpath($start1, $length) eqv self.subpath($start2, $length);
     }
 
-    method repeating-subpaths(Int $start, Int $max-length)
+    method repeating-subpaths(Int $start, Int $max-length is copy)
     {
-        # TODO hacky solution: only search for subpaths of length 6 to 8, which happens to work on my input.  
-        loop (my $l = min(8, $max-length); $l ≥ 6; $l--) {
+        # We only want subpaths with an even number of elements ((turn, moves) xx n)
+        $max-length-- unless $max-length %% 2;
+        loop (my $l = $max-length; $l ≥ 2; $l-= 2) {
+            # subpath string can't be too long for a computer input string
+            next if self.subpath($start, $l).join(',').chars > $!max-input-length;
+
             my @p = ($start + $l .. @!path - $l).grep(-> $i { self.matching-subpaths($i, $start, $l) });
             return flat $l, $start, @p if @p;
         }
 
-        # Haven't found anything? Then just return the whole thing
+        # Haven't found anything? Then just return the whole thing without repetition
         return $max-length, $start;
     }
 
