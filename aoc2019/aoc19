@@ -36,6 +36,8 @@ class DroneSystem
         my $y = $size - 1;
         my $x = 0; $x++ until self.is-beam($x, $y);
         loop {
+            # If we can fit a square with the bottom-left corner here in the beam,
+            # we're done
             return ($x, $y-$size+1) if self.is-beam($x+$size-1, $y-$size+1);
 
             $y++;
