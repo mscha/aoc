@@ -1,0 +1,66 @@
+#!/usr/bin/env perl6
+use v6.d;
+
+# Advent of Code 2019 day 19 -- https://adventofcode.com/2019/day/19
+
+use lib $*PROGRAM.parent;
+use ShipComputer;
+
+$*OUT.out-buffer = False;   # Autoflush
+
+class DroneSystem
+{
+    has Str @.instructions;
+
+    has Bool $.verbose = False;
+
+    has $.computer = ShipComputer.new(:@!instructions);
+
+    method is-beam(Int $x, Int $y)
+    {
+        return False if $x < 0 || $y < 0;
+
+        $!computer.reset;
+        $!computer.run-program($x, $y);
+        return ?$!computer.output.tail;
+    }
+
+    method scan(Int $width, Int $height)
+    {
+        return +((^$width) X (^$height)).grep( -> ($x,$y) { self.is-beam($x, $y) });
+    }
+
+    method first-beam-square(Int $size)
+    {
+        # Follow the lower border of the beam
+        my $y = $size - 1;
+        my $x = 0; $x++ until self.is-beam($x, $y);
+        loop {
+            return ($x, $y-$size+1) if self.is-beam($x+$size-1, $y-$size+1);
+
+            $y++;
+            $x++ until self.is-beam($x, $y);
+        }
+    }
+}
+
+multi sub MAIN(*@instructions, Bool :v(:$verbose) = False)
+{
+    # Part 1
+    my $sys = DroneSystem.new(:@instructions, :$verbose);
+    say "In the 50×50 area closest to the emitter, $sys.scan(50,50) points are affected by the beam.";
+
+    # Part 2
+    my ($x, $y) = $sys.first-beam-square(100);
+    say "The first 100×100 square in the beam is at ($x,$y) -> { 10_000 × $x + $y}.";
+}
+
+multi sub MAIN(Str $inputfile where *.IO.f, Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.IO.lines, :$verbose);
+}
+
+multi sub MAIN(Bool :v(:$verbose) = False)
+{
+    MAIN(~$*PROGRAM.sibling('aoc19.input'), :$verbose);
+}
