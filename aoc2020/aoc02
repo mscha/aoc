@@ -41,7 +41,7 @@ class Password
     }
 }
 
-multi sub MAIN(IO() $inputfile where *.f = 'aoc02.input', Bool :v(:$verbose) = False)
+sub MAIN(IO() $inputfile where *.f = 'aoc02.input', Bool :v(:$verbose) = False)
 {
     my @passwords = $inputfile.lines.map(-> $line { Password.new(:$line) });
 

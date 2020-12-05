@@ -5,7 +5,7 @@ use v6.d;
 
 $*OUT.out-buffer = False;   # Autoflush
 
-multi sub MAIN(IO() $inputfile where *.f = 'aoc01.input', Bool :v(:$verbose) = False)
+sub MAIN(IO() $inputfile where *.f = 'aoc01.input', Bool :v(:$verbose) = False)
 {
     for 2, 3 -> $count {
         my @expenses = $inputfile.lines».Int;

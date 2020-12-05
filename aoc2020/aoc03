@@ -46,7 +46,7 @@ class Forest
     }
 }
 
-multi sub MAIN(IO() $inputfile where *.f = 'aoc03.input', Bool :v(:$verbose) = False)
+sub MAIN(IO() $inputfile where *.f = 'aoc03.input', Bool :v(:$verbose) = False)
 {
     my $forest = Forest.new(:map($inputfile.slurp), :$verbose);
 
