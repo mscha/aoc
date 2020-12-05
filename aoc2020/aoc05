@@ -8,7 +8,7 @@ $*OUT.out-buffer = False;   # Autoflush
 sub seat-id($pass)
 {
     # Treat boarding pass code as a binary number: F and L are 0, B and R are 1
-    return $pass.trans(<F L> => '0', <B R> => '1').parse-base(2);
+    return $pass.trans('FBLR' => '0101').parse-base(2);
 }
 
 sub MAIN(IO() $inputfile where *.f = 'aoc05.input', Bool :v(:$verbose) = False)
