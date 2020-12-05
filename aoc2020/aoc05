@@ -15,7 +15,8 @@ sub MAIN(IO() $inputfile where *.f = 'aoc05.input', Bool :v(:$verbose) = False)
 {
     my @seat-ids = $inputfile.lines.map(&seat-id);
 
-    say $verbose ?? 'Part one: highest seat ID is ' !! '', @seat-ids.max;
+    say $verbose ?? 'Part one: highest seat ID is ' !! '',
+        @seat-ids.max;
 
     say $verbose ?? 'Part two: my seat ID is ' !! '',
         (@seat-ids.min .. @seat-ids.max).first(* ∉ @seat-ids);
