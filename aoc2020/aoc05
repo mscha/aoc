@@ -19,5 +19,5 @@ sub MAIN(IO() $inputfile where *.f = 'aoc05.input', Bool :v(:$verbose) = False)
         @seat-ids.max;
 
     say $verbose ?? 'Part two: my seat ID is ' !! '',
-        (@seat-ids.min .. @seat-ids.max).first(* ∉ @seat-ids);
+        @seat-ids.minmax.first(* ∉ @seat-ids);
 }
