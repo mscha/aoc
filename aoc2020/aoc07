@@ -9,7 +9,7 @@ grammar BagRules
 {
     rule TOP { <bagrule>+ }
 
-    rule bagrule { <bagcolor> <bags> 'contain' [ [ <bagcount> + % ',' ] | 'no other bags' ] '.' }
+    rule bagrule { <bagcolor> <bags> 'contain' [ <bagcount>+ % ',' | 'no other bags' ] '.' }
 
     rule bagcount { <count> <bagcolor> <bags> }
 
