@@ -65,7 +65,7 @@ class GameConsole
             }
 
             @!visited[$!ptr]++;
-            say "> $!ptr: @!instr[$!ptr].join(' ')" if $!verbose;
+            say "> $!ptr: @!instr[$!ptr]" if $!verbose;
             self.execute(|@!instr[$!ptr]);
             $!ptr++;
             say "     [ptr=$!ptr, acc=$!acc]" if $!verbose;
