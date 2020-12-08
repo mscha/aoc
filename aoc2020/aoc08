@@ -26,7 +26,7 @@ sub MAIN(IO() $inputfile where *.f = 'aoc08.input', Bool :v(:$verbose) = False)
         my $new-oper = $orig-oper eq 'nop' ?? 'jmp' !! 'nop';
 
         say "Trying line $i operation '$new-oper' instead of '$orig-oper' ..." if $verbose;
-        $console.instr[$i][0] = $new-oper;
+        temp $console.instr[$i][0] = $new-oper;
         $console.initialize;
         $console.run;
         if $console.state == TERM {
@@ -36,8 +36,6 @@ sub MAIN(IO() $inputfile where *.f = 'aoc08.input', Bool :v(:$verbose) = False)
         else {
             say "Console state: $console.state()" if $verbose;
         }
-
-        $console.instr[$i][0] = $orig-oper;
     }
     say $verbose ?? 'Part 2: value of accumulator when patched boot code terminates: ' !! '',
         $console.acc;
