@@ -28,8 +28,8 @@ sub MAIN(IO() $inputfile where *.f = 'aoc09.input', Int $preamble-size = 25, Boo
     # Part two - less elegant but much faster
     LOOP:
     for ^@data -> $from {
-        my $sum = 0;
-        for $from ..^ @data -> $to {
+        my $sum = @data[$from];
+        for $from ^..^ @data -> $to {
             $sum += @data[$to];
             given $sum <=> $invalid {
                 when Same {
