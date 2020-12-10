@@ -1,0 +1,31 @@
+#!/usr/bin/env raku
+use v6.d;
+
+# Advent of Code 2020 day 10 -- https://adventofcode.com/2020/day/10
+
+$*OUT.out-buffer = False;   # Autoflush
+
+unit sub MAIN(IO() $inputfile where *.f = 'aoc10.input', Int $preamble-size = 25, Bool :v(:$verbose) = False);
+
+my @ratings = $inputfile.lines».Int;
+
+# Part one
+
+my @chain = flat 0, @ratings.sort, @ratings.max+3;
+my $diff = bag @chain.rotor(2=>-1).map({ $_[1] - $_[0] });
+say $verbose ?? "Part one: $diff{1} differences of 1 × $diff{3} differences of 3 = " !! '',
+    $diff{1} × $diff{3};
+
+# Part two
+
+my $joltages = set @chain;
+
+use experimental :cached;
+sub num-arrangements($from, $to) is cached
+{
+    return 1 if $from == $to;
+    return ($from ^.. $from+3).map(-> $n { $n ≤ $to && $n ∈ $joltages ?? num-arrangements($n, $to) !! 0 }).sum;
+}
+
+say $verbose ?? "Part two: the number of distinct arrangements = " !! '',
+    num-arrangements(0, @chain.max);
