@@ -24,7 +24,9 @@ use experimental :cached;
 sub num-arrangements($from, $to) is cached
 {
     return 1 if $from == $to;
-    return ($from ^.. $from+3).map(-> $n { $n ≤ $to && $n ∈ $joltages ?? num-arrangements($n, $to) !! 0 }).sum;
+    return 0 if $from > $to;
+    return 0 unless $from ∈ $joltages;
+    return ($from ^.. $from+3).map({ num-arrangements($^n, $to) }).sum;
 }
 
 say $verbose ?? "Part two: the number of distinct arrangements = " !! '',
