@@ -5,7 +5,7 @@ use v6.d;
 
 $*OUT.out-buffer = False;   # Autoflush
 
-unit sub MAIN(IO() $inputfile where *.f = 'aoc10.input', Int $preamble-size = 25, Bool :v(:$verbose) = False);
+unit sub MAIN(IO() $inputfile where *.f = 'aoc10.input', Bool :v(:$verbose) = False);
 
 my @ratings = $inputfile.lines».Int;
 
