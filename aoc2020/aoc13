@@ -35,7 +35,7 @@ sub winning-time-too-slow(Str $id-list)
     # amount of minutes later
     for @ids.kv -> $i, $id {
         next if $id eq 'x';
-        @times = @times.grep(-> $t { $t % $id == -$i % $id });
+        @times = @times.grep(-> $t { ($t + $i) % $id == 0 });
     }
 
     # The first one is the winning time
@@ -54,7 +54,7 @@ sub winning-time(Str $id-list)
     # amount of minutes later
     for @ids.kv -> $i, $id {
         next if $id eq 'x';
-        my $first-time = @times.first(-> $t { $t % $id == -$i % $id });
+        my $first-time = @times.first(-> $t { ($t + $i) % $id == 0 });
         $step lcm= $id;
         @times = $first-time, $first-time + $step ... *;
     }
