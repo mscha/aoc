@@ -61,6 +61,5 @@ sub winning-time(Str $id-list)
         $step lcm= $id;
     }
 
-    # The first one is the winning time
     return $time;
 }
