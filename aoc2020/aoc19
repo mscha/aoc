@@ -1,0 +1,130 @@
+#!/usr/bin/env raku
+use v6.d;
+
+# Advent of Code 2020 day 19 -- https://adventofcode.com/2020/day/19
+
+$*OUT.out-buffer = False;   # Autoflush
+
+grammar MonsterMessages
+{
+    rule TOP
+    {
+        <rule>+ % <.ws>
+        <message>+ % <.ws>
+    }
+
+    rule rule { <match-rule> | <meta-rule> }
+    rule match-rule { <id>':' '"'<char>'"' }
+    rule meta-rule { <id>':' <subrule>+ % '|' }
+    rule subrule { <id>+ % \h+ }
+
+    token message { <char>+ };
+
+    token id { \d+ }
+    token char { <[ab]> }
+}
+
+class MessageParser
+{
+    has Str $.input;
+
+    has @.rules;
+    has @.messages;
+
+    has Bool $.debug = False;
+
+    submethod TWEAK
+    {
+        MonsterMessages.parse($!input, :actions(self)) or die "Invalid input";
+        dd @!rules, @!messages if $!debug;
+    }
+
+    method match-rule($/)
+    {
+        @!rules[$<id>] = { :type<match>, :match(~$<char>) };
+    }
+
+    method meta-rule($/)
+    {
+        @!rules[$<id>] = { :type<meta>, :rules($<subrule>»<id>».Int) };
+    }
+
+    method message($/)
+    {
+        @!messages.append(~$/);
+    }
+
+    multi method matches(Int $id where @!rules[$id]<type> eq 'match',
+                         Str $mess, Int $depth = 0)
+    {
+        my $match = @!rules[$id]<match>;
+        say ' ' x ($depth+2), "[$id]: $mess ($match)" if $!debug;
+        if $depth {
+            say ' ' x ($depth+2), "-> FALSE" unless $mess.starts-with($match) || !$!debug;
+            return (False, $mess) unless $mess.starts-with($match);
+            say ' ' x ($depth+2), "-> TRUE" if $!debug;
+            return (True, $mess.substr(1));
+        }
+        else {
+            say ' ' x ($depth+2), $mess eq $match ?? "-> TRUE" !! "-> FALSE" if $!debug;
+            return $mess eq $match;
+        }
+    }
+
+    multi method matches(Int $id where @!rules[$id]<type> eq 'meta',
+                         Str $mess, Int $depth = 0)
+    {
+        say ' ' x ($depth+2), "[$id]: $mess" if $!debug;
+        SUBRULE:
+        for @!rules[$id]<rules>[] -> @subrule {
+            my ($ok, $rest) = (True, $mess);
+            for @subrule -> $r {
+                ($ok, $rest) = self.matches($r, $rest, $depth+1);
+                next SUBRULE unless $ok;
+            }
+            say ' ' x ($depth+2), "-> TRUE" unless (!$depth && $rest) || !$!debug;
+            if ($depth) {
+                return (True, $rest);
+            }
+            else {
+                return True unless $rest;
+            }
+        }
+
+        say ' ' x ($depth+2), "-> FALSE" if $!debug;
+        if $depth {
+            return (False, $mess);
+        }
+        else {
+            return False;
+        }
+    }
+
+    method matching-message(Int $id)
+    {
+        return @!messages.grep({ self.matches($id, $^m) });
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc19.input', Bool :v(:$verbose) = False)
+{
+    # Part one
+    my $parser = MessageParser.new(:input($inputfile.slurp));
+    my @matching = $parser.matching-message(0);
+    if $verbose {
+        .say for @matching;
+    }
+    say "Part one: the number of matching messages is ", +@matching;
+
+    # Part two
+    # This seems to enter an infinite loop.  I'm stumped.
+    my $input = $inputfile.slurp
+                          .subst(/8':'\V*/, '8: 42 | 42 8')
+                          .subst(/11':'\V*/, '11: 42 31 | 42 11 31');
+    my $parser2 = MessageParser.new(:$input);
+    my @matching2 = $parser2.matching-message(0);
+    if $verbose {
+        .say for @matching2;
+    }
+    say "Part two: the number of matching messages is ", +@matching2;
+}
