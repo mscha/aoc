@@ -1,0 +1,13 @@
+#!/usr/bin/env raku
+use v6.d;
+
+# Advent of Code 2021 day 1 -- https://adventofcode.com/2021/day/1
+
+$*OUT.out-buffer = False;   # Autoflush
+
+sub MAIN(IO() $inputfile where *.f = 'aoc01.input', Bool :v(:$verbose) = False)
+{
+    my @depths = $inputfile.words».Int;
+    say "Part 1: ", zip(@depths, @depths[1..*], :with(&infix:«<»)).sum;
+    say "Part 2: ", zip(@depths, @depths[3..*], :with(&infix:«<»)).sum;
+}
