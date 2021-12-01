@@ -1,0 +1,13 @@
+#!/usr/bin/env raku
+use v6.d;
+
+# Advent of Code 2021 day 1 -- https://adventofcode.com/2021/day/1
+
+$*OUT.out-buffer = False;   # Autoflush
+
+sub MAIN(IO() $inputfile where *.f = 'aoc01.input', Bool :v(:$verbose) = False)
+{
+    say "Part 1: ", $inputfile.words.rotor(2=>-1).map(-> ($a, $b) { $b > $a }).sum;
+    say "Part 2: ", $inputfile.words.rotor(3=>-2)».sum
+                                    .rotor(2=>-1).map(-> ($a, $b) { $b > $a }).sum;
+}
