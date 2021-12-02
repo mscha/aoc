@@ -56,13 +56,15 @@ sub MAIN(IO() $inputfile where *.f = 'aoc02.input', Bool :v(:$verbose) = False)
 
     my $sub1 = Submarine1.new;
     $sub1.follow($instructions);
-    say "Position: ", $sub1.pos if $verbose;
-    say "Depth: ", $sub1.depth if $verbose;
-    say "Part 1: ", $sub1.pos × $sub1.depth;
+    say 'Position: ', $sub1.pos if $verbose;
+    say 'Depth: ', $sub1.depth if $verbose;
+    say 'Part 1: ', $sub1.pos × $sub1.depth;
 
     my $sub2 = Submarine2.new;
     $sub2.follow($instructions);
-    say "Position: ", $sub2.pos if $verbose;
-    say "Depth: ", $sub2.depth if $verbose;
-    say "Part 2: ", $sub2.pos × $sub2.depth;
+    say '' if $verbose;
+    say 'Position: ', $sub2.pos if $verbose;
+    say 'Depth: ', $sub2.depth if $verbose;
+    say 'Aim: ', $sub2.depth if $verbose;
+    say 'Part 2: ', $sub2.pos × $sub2.depth;
 }
