@@ -1,0 +1,68 @@
+#!/usr/bin/env raku
+use v6.d;
+
+# Advent of Code 2021 day 2 -- https://adventofcode.com/2021/day/2
+
+$*OUT.out-buffer = False;   # Autoflush
+
+grammar SubmarineCommands
+{
+    rule TOP { <command>* }
+
+    rule command { <forward> | <down> | <up> }
+    rule forward { 'forward' <count> }
+    rule down { 'down' <count> }
+    rule up { 'up' <count> }
+
+    token count { \d+ }
+}
+
+class Submarine1
+{
+    has Int $.pos = 0;
+    has Int $.depth = 0;
+
+    method forward($/) { $!pos += $<count> } 
+    method down($/)    { $!depth += $<count> }
+    method up($/)      { $!depth -= $<count> }
+
+    method follow(Str $instructions)
+    {
+        SubmarineCommands.parse($instructions, :actions(self))
+            or die "Invalid submarine instructions!"
+    }
+}
+
+class Submarine2
+{
+    has Int $.pos = 0;
+    has Int $.depth = 0;
+    has Int $.aim = 0;
+
+    method forward($/) { $!pos += $<count>; $!depth += $!aim × $<count> } 
+    method down($/)    { $!aim += $<count> }
+    method up($/)      { $!aim -= $<count> }
+
+    method follow(Str $instructions)
+    {
+        SubmarineCommands.parse($instructions, :actions(self))
+            or die "Invalid submarine instructions!"
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc02.input', Bool :v(:$verbose) = False)
+{
+    my $instructions = $inputfile.slurp;
+
+    my $sub1 = Submarine1.new;
+    $sub1.follow($instructions);
+    say "Position: ", $sub1.pos if $verbose;
+    say "Depth: ", $sub1.depth if $verbose;
+    say "Part 1: ", $sub1.pos × $sub1.depth;
+
+    my $sub2 = Submarine2.new;
+    $sub2.follow($instructions);
+    say "Position: ", $sub2.pos if $verbose;
+    say "Depth: ", $sub2.depth if $verbose;
+    say "Part 2: ", $sub2.pos × $sub2.depth;
+}
