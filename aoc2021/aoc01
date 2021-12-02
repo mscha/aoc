@@ -1,9 +1,8 @@
 #!/usr/bin/env raku
 use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
 
 # Advent of Code 2021 day 1 -- https://adventofcode.com/2021/day/1
-
-$*OUT.out-buffer = False;   # Autoflush
 
 sub MAIN(IO() $inputfile where *.f = 'aoc01.input', Bool :v(:$verbose) = False)
 {
