@@ -21,10 +21,12 @@ class Submarine1
     has Int $.pos = 0;
     has Int $.depth = 0;
 
+    # SubmarineCommands grammar actions
     method forward($/) { $!pos += $<count> } 
     method down($/)    { $!depth += $<count> }
     method up($/)      { $!depth -= $<count> }
 
+    # Parse and follow instructions
     method follow(Str $instructions)
     {
         SubmarineCommands.parse($instructions, :actions(self))
@@ -38,10 +40,12 @@ class Submarine2
     has Int $.depth = 0;
     has Int $.aim = 0;
 
+    # SubmarineCommands grammar actions
     method forward($/) { $!pos += $<count>; $!depth += $!aim × $<count> } 
     method down($/)    { $!aim += $<count> }
     method up($/)      { $!aim -= $<count> }
 
+    # Parse and follow instructions
     method follow(Str $instructions)
     {
         SubmarineCommands.parse($instructions, :actions(self))
