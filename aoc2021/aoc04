@@ -1,0 +1,129 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 4 -- https://adventofcode.com/2021/day/4
+
+grammar BingoDrawing
+{
+    rule TOP { <draw> <card>+ }
+
+    rule draw { <num>+ % ',' }
+
+    rule card { <row> ** 5 }
+    rule row { <num> ** 5 }
+
+    token num { \d+ }
+}
+
+class BingoCard
+{
+    has Int $.id is required;
+    has @.card is required;
+    has Bool $.verbose = False;
+
+    has Bool $.won = False;
+    has Int $.nums-called = 0;
+    has Int $.winning-num;
+
+    has @!pos;
+    has @!marked = [[False xx 5] xx 5];
+
+    submethod TWEAK
+    {
+        for ^5 -> $r {
+            for ^5 -> $c {
+                @!pos[@!card[$r;$c]] = [$r,$c];
+            }
+        }
+    }
+
+    method mark(Int $n)
+    {
+        return if $!won;
+
+        $!nums-called++;
+        if my $p = @!pos[$n] {
+            say "  Card $!id has $n at ($p[0],$p[1])" if $!verbose;
+            @!marked[$p[0];$p[1]] = True;
+            $!winning-num = $n if self.check-if-won;
+        }
+    }
+
+    method check-if-won
+    {
+        for ^5 -> $r {
+            if all(@!marked[$r;*]) {
+                say "  card $!id won at row $r!" if $!verbose;
+                $!won = True;
+                return True;
+            }
+        }
+
+        for ^5 -> $c {
+            if all(@!marked[*;$c]) {
+                say "  card $!id won at column $c!" if $!verbose;
+                $!won = True;
+                return True;
+            }
+        }
+
+        return False;
+    }
+
+    method unmarked-numbers
+    {
+        gather for ^5 -> $r {
+            for ^5 -> $c {
+                take @!card[$r;$c] unless @!marked[$r;$c];
+            }
+        }
+    }
+
+    method final-score { self.unmarked-numbers.sum × $!winning-num }
+}
+
+class BingoGame
+{
+    has Str $.drawing is required;
+    has Bool $.verbose = False;
+
+    has Int @.nums;
+    has Int $.num-cards = 0;
+    has BingoCard @.cards;
+
+    submethod TWEAK
+    {
+        BingoDrawing.parse($!drawing, :actions(self)) or die "Invalid bingo drawing!";
+    }
+
+    # BingoDrawing grammar action methods
+    method draw($/) { @!nums = $<num>».Int }
+    method card($/) { @!cards.push: BingoCard.new(:id($!num-cards++),
+                                                  :card($<row>.map(*<num>».Int)),
+                                                  :$!verbose) }
+
+    method winning-cards { @!cards.grep(*.won) }
+
+    method play(Bool :$continue = False)
+    {
+        while (!$.winning-cards || $continue) && @!nums {
+            my $n = @!nums.shift;
+            say "Draw: $n" if $!verbose;
+            @!cards».mark($n);
+        }
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc04.input', Bool :v(:$verbose) = False)
+{
+    my $game = BingoGame.new(:drawing($inputfile.slurp), :$verbose);
+    $game.play;
+    my @winning = $game.winning-cards;
+    die "@winning.elems() winning cards" unless @winning == 1;
+    say "Part 1: score of winning card is ", @winning[0].final-score;
+
+    $game.play(:continue);
+    @winning = $game.winning-cards.sort(*.nums-called);
+    say "Part 1: score of losing card is ", @winning[*-1].final-score;
+}
