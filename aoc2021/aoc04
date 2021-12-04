@@ -19,7 +19,7 @@ grammar BingoDrawing
 class BingoCard
 {
     has Int $.id is required;
-    has @.card is required;
+    has @.nums is required;
     has Bool $.verbose = False;
 
     has Bool $.won = False;
@@ -33,7 +33,7 @@ class BingoCard
     {
         for ^5 -> $r {
             for ^5 -> $c {
-                @!pos[@!card[$r;$c]] = [$r,$c];
+                @!pos[@!nums[$r;$c]] = [$r,$c];
             }
         }
     }
@@ -75,7 +75,7 @@ class BingoCard
     {
         gather for ^5 -> $r {
             for ^5 -> $c {
-                take @!card[$r;$c] unless @!marked[$r;$c];
+                take @!nums[$r;$c] unless @!marked[$r;$c];
             }
         }
     }
@@ -100,7 +100,7 @@ class BingoGame
     # BingoDrawing grammar action methods
     method draw($/) { @!nums = $<num>».Int }
     method card($/) { @!cards.push: BingoCard.new(:id($!num-cards++),
-                                                  :card($<row>.map(*<num>».Int)),
+                                                  :nums($<row>.map(*<num>».Int)),
                                                   :$!verbose) }
 
     method winning-cards { @!cards.grep(*.won) }
