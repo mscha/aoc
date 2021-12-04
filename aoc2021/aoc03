@@ -1,0 +1,53 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 3 -- https://adventofcode.com/2021/day/3
+
+class Submarine
+{
+    has Str @.diagnostics;
+
+    has @!diag-bits = [Z+] @!diagnostics».comb;
+
+    has Int $!num-diags = @!diagnostics.elems;
+    has Int $!num-bits = @!diagnostics[0].chars;
+
+    has Int @!most-common-value = @!diag-bits.map(+(* > $!num-diags / 2));
+
+    method γ { @!most-common-value.join.parse-base(2) }
+    method ε { @!most-common-value.map(1 - *).join.parse-base(2) }
+
+    method power-consumption { self.γ × self.ε }
+
+    method rating(Bool :$most-common)
+    {
+        my @diags = @!diagnostics;
+        for ^$!num-bits -> $bit {
+            my %d = @diags.classify(*.substr($bit,1));
+            @diags = |%d{+((%d{1} < @diags/2) ?^ $most-common)};
+            last if @diags ≤ 1;
+        }
+        die "@diags.elems() remaining!" unless @diags.elems == 1;
+        return @diags[0].parse-base(2);
+    }
+
+    method oxygen-generator-rating { self.rating(:most-common) }
+    method co2-scrubber-rating { self.rating(:!most-common) }
+    method life-support-rating { self.oxygen-generator-rating ×
+                                 self.co2-scrubber-rating }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc03.input', Bool :v(:$verbose) = False)
+{
+    my $sub = Submarine.new(:diagnostics($inputfile.words));
+
+    say 'γ = ', $sub.γ if $verbose;
+    say 'ε = ', $sub.ε if $verbose;
+    say 'Part 1: the power consumption is ', $sub.power-consumption;
+
+    say '' if $verbose;
+    say 'Oxygen rating: ', $sub.oxygen-generator-rating if $verbose;
+    say 'CO₂ scrubber rating: ', $sub.co2-scrubber-rating if $verbose;
+    say 'Part 2: the life support rating is ', $sub.life-support-rating;
+}
