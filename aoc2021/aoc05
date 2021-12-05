@@ -31,7 +31,8 @@ class VentMap
     }
 
     # VentList grammar action method
-    method ventline($/) {
+    method ventline($/)
+    {
         # Get the coordinates, ignore diagonals if requested
         my ($x0, $y0) = $<pos-from><x y>».Int;
         my ($x1, $y1) = $<pos-to><x y>».Int;
