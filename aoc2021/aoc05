@@ -11,8 +11,8 @@ grammar VentList
     rule ventline { <pos-from> '->' <pos-to> }
     rule pos-from { <x> ',' <y> }
     rule pos-to { <x> ',' <y> }
-    rule x { \d+ }
-    rule y { \d+ }
+    token x { \d+ }
+    token y { \d+ }
 }
 
 class VentMap
