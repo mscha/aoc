@@ -1,0 +1,63 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 5 -- https://adventofcode.com/2021/day/5
+
+grammar VentList
+{
+    rule TOP { <ventline>+ }
+
+    rule ventline { <pos-from> '->' <pos-to> }
+    rule pos-from { <x> ',' <y> }
+    rule pos-to { <x> ',' <y> }
+    rule x { \d+ }
+    rule y { \d+ }
+}
+
+class VentMap
+{
+    has Str $.vent-list is required;
+    has Bool $.ignore-diagonals = False;
+
+    has @!grid;
+    has $!max-x = 0;
+    has $!max-y = 0;
+
+    submethod TWEAK
+    {
+        VentList.parse($!vent-list, :actions(self))
+            or die 'Unable to parse vent list!';
+    }
+
+    # VentList grammar action method
+    method ventline($/) {
+        # Get the coordinates, ignore diagonals if requested
+        my ($x0, $y0) = $<pos-from><x y>».Int;
+        my ($x1, $y1) = $<pos-to><x y>».Int;
+        return if $!ignore-diagonals && $x0 ≠ $x1 && $y0 ≠ $y1;
+
+        # Increase the number of vent lines for each point on the line
+        my $max = abs($x1 - $x0) || abs($y1 - $y0);
+        my $dx = sign($x1 - $x0);
+        my $dy = sign($y1 - $y0);
+        for 0..$max -> $i {
+            @!grid[$y0 + $i × $dy; $x0 + $i × $dx]++;
+        }
+
+        # Keep track of highest coordinates on the grid
+        $!max-x max= $x0 max $x1;
+        $!max-y max= $y0 max $y1;
+    }
+
+    method overlap-count { @!grid[*;*].grep({ $_ && $_ ≥ 2 }).elems }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc05.input', Bool :v(:$verbose) = False)
+{
+    my $map1 = VentMap.new(:vent-list($inputfile.slurp), :ignore-diagonals);
+    say "Part 1: there are $map1.overlap-count() points with overlap.";
+
+    my $map2 = VentMap.new(:vent-list($inputfile.slurp));
+    say "Part 2: there are $map2.overlap-count() points with overlap.";
+}
