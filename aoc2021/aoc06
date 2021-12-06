@@ -1,0 +1,45 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 6 -- https://adventofcode.com/2021/day/6
+
+class LanternSchool
+{
+    has Int @!timer-count = 0 xx 9;
+
+    multi method add(Int $timer) { @!timer-count[$timer]++ }
+    multi method add(Int @timer) { self.add($_) for @timer }
+
+    method day-passed
+    {
+        @!timer-count[flat(8,0..7)] = @!timer-count[0..8];
+        @!timer-count[6] += @!timer-count[8];
+    }
+
+    method fish-count { @!timer-count.sum; }
+    method timer-list { @!timer-count.pairs
+                                     .grep(*.value)
+                                     .map({ "$_.value()×$_.key()" })
+                                     .join(',') }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc06.input', Bool :v(:$verbose) = False)
+{
+    my Int @timers = $inputfile.slurp.comb(/\d+/)».Int;
+    my $school = LanternSchool.new;
+    $school.add(@timers);
+    say 'Initial state: ', $school.timer-list if $verbose;
+
+    for 1..80 -> $d {
+        $school.day-passed;
+        say "After $d.fmt('%2d') days: ", $school.timer-list if $verbose;
+    }
+    say "Part 1: after 80 days, there are a total of $school.fish-count() fish.";
+
+    for 81..256 -> $d {
+        $school.day-passed;
+        say "After $d.fmt('%2d') days: ", $school.timer-list if $verbose;
+    }
+    say "Part 1: after 256 days, there are a total of $school.fish-count() fish.";
+}
