@@ -13,7 +13,9 @@ class LanternSchool
 
     method day-passed
     {
-        @!timer-count[flat(8,0..7)] = @!timer-count[0..8];
+        # Fish with timer t>0 get timer t-1
+        # Fish with timer 0 result in fish with timer 6 and 8
+        @!timer-count .= rotate;
         @!timer-count[6] += @!timer-count[8];
     }
 
