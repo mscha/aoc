@@ -1,0 +1,57 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 6 -- https://adventofcode.com/2021/day/6
+
+class LanternSchool { ... }
+
+class LanternFish
+{
+    has Int $.timer = 8;
+    has LanternSchool $.school is required;
+
+    method spawn { $!school.add(LanternFish.new(:$!school)) }
+
+    method day-passed
+    {
+        if ($!timer == 0) {
+            $!timer = 7;
+            self.spawn;
+        }
+        $!timer--;
+    }
+}
+
+class LanternSchool
+{
+    has LanternFish @.fish = Empty;
+
+    multi method add(LanternFish $f) { @!fish.push($f) }
+    multi method add(Int $timer) { self.add(LanternFish.new(:$timer, :school(self))) }
+    multi method add(Int @timer) { self.add($_) for @timer }
+
+    method day-passed
+    {
+        my @curr-fish = @!fish;     # Ensure newly added fish don't pass a day
+        .day-passed for @curr-fish;
+    }
+
+    method fish-count { @!fish.elems }
+    method timer-list { @!fish».timer.join(',') }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc06.input', Int :$days = 80, Bool :v(:$verbose) = False)
+{
+    my Int @timers = $inputfile.slurp.comb(/\d+/)».Int;
+    my $school = LanternSchool.new;
+    $school.add(@timers);
+    say 'Initial state: ', $school.timer-list if $verbose;
+    for 1..$days -> $d {
+        $school.day-passed;
+        say "After $d.fmt('%2d') days: ", $school.timer-list if $verbose;
+    }
+    say "Part 1: after $days days, there are a total of $school.fish-count() fish.";
+
+    # This won't do for part 2 ...
+}
