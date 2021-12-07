@@ -1,0 +1,25 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 7 -- https://adventofcode.com/2021/day/7
+
+sub T($n) { $n × ($n+1) div 2 }     # Triangle numbers
+
+sub MAIN(IO() $inputfile where *.f = 'aoc07.input', Bool :v(:$verbose) = False)
+{
+    my @positions = $inputfile.slurp.comb(/\d+/)».Int;
+
+    my @fuel-for-pos = (0..@positions.max).map(-> $dest {
+            @positions.map(-> $p { abs($dest - $p) }).sum });
+    dd @positions, @fuel-for-pos if $verbose;
+    my $min = @fuel-for-pos.minpairs[0];
+    say "Part 1: fuel needed to get to $min.key() is $min.value().";
+
+    say '' if $verbose;
+    my @fuel-for-pos2 = (0..@positions.max).map(-> $dest {
+            @positions.map(-> $p { T(abs($dest - $p)) }).sum });
+    dd @positions, @fuel-for-pos2 if $verbose;
+    my $min2 = @fuel-for-pos2.minpairs[0];
+    say "Part 2: fuel needed to get to $min2.key() is $min2.value().";
+}
