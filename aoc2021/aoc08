@@ -78,7 +78,7 @@ sub MAIN(IO() $inputfile where *.f = 'aoc08.input', Bool :v(:$verbose) = False)
     my @unscr = $inputfile.lines.map({ Unscrambler.new(:line($_), :$verbose) });
 
     my $count = @unscr».output[*;*].grep({ $_.chars == any(2,3,4,7) }).elems;
-    say "Part 1: digits 1, 4, 7, ot 8 appear $count times.";
+    say "Part 1: digits 1, 4, 7, or 8 appear $count times.";
 
     say "Part 2: the sum of the output values is { @unscr».value.sum }.";
 }
