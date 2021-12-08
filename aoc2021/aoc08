@@ -39,7 +39,7 @@ class Unscrambler
     method output-list($/) { @!output = $<segment>».&strsort }
 
     method decode {
-        # First, determine the segments for 1, 4, 7 and 8.
+        # First, determine the segments for 1, 4, 7 and 8 with unique segment count.
         @!segments[1] = @!monitor.first(*.chars == 2);
         @!segments[4] = @!monitor.first(*.chars == 4);
         @!segments[7] = @!monitor.first(*.chars == 3);
