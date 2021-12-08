@@ -40,28 +40,28 @@ class Unscrambler
 
     method decode {
         # First, determine the segments for 1, 4, 7 and 8.
-        @!segments[1] = @!monitor.grep(*.chars == 2)[0];
-        @!segments[4] = @!monitor.grep(*.chars == 4)[0];
-        @!segments[7] = @!monitor.grep(*.chars == 3)[0];
-        @!segments[8] = @!monitor.grep(*.chars == 7)[0]; # 'abcdefg'
+        @!segments[1] = @!monitor.first(*.chars == 2);
+        @!segments[4] = @!monitor.first(*.chars == 4);
+        @!segments[7] = @!monitor.first(*.chars == 3);
+        @!segments[8] = @!monitor.first(*.chars == 7); # 'abcdefg'
 
         # 6 is the only digit with 6 segments that is NOT a superset of 1
-        @!segments[6] = @!monitor.grep({ .chars == 6 && .comb ⊅ @!segments[1].comb })[0];
+        @!segments[6] = @!monitor.first({ .chars == 6 && .comb ⊅ @!segments[1].comb });
 
         # 9 is the only digit with 6 segments that is a superset of 4
-        @!segments[9] = @!monitor.grep({ .chars == 6 && .comb ⊃ @!segments[4].comb })[0];
+        @!segments[9] = @!monitor.first({ .chars == 6 && .comb ⊃ @!segments[4].comb });
 
         # 0 is the remaining digit with 6 segments
-        @!segments[0] = @!monitor.grep({ .chars == 6 && $_ ne any @!segments[6,9] })[0];
+        @!segments[0] = @!monitor.first({ .chars == 6 && $_ ne any @!segments[6,9] });
 
         # 3 is the only digit with 5 segments that is a superset of 1
-        @!segments[3] = @!monitor.grep({ .chars == 5 && .comb ⊃ @!segments[1].comb })[0];
+        @!segments[3] = @!monitor.first({ .chars == 5 && .comb ⊃ @!segments[1].comb });
 
         # 5 is the only digit with 5 segments that is a subset of 6
-        @!segments[5] = @!monitor.grep({ .chars == 5 && .comb ⊂ @!segments[6].comb })[0];
+        @!segments[5] = @!monitor.first({ .chars == 5 && .comb ⊂ @!segments[6].comb });
 
         # 2 is the remaining digit with 5 segments
-        @!segments[2] = @!monitor.grep({ .chars == 5 && $_ ne any @!segments[3,5] })[0];
+        @!segments[2] = @!monitor.first({ .chars == 5 && $_ ne any @!segments[3,5] });
 
         # Now set up the translation table
         %!trans = @!segments.antipairs;
