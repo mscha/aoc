@@ -82,7 +82,7 @@ sub MAIN(IO() $inputfile where *.f = 'aoc09.input')
     my $map = HeightMap.new(:map($inputfile.slurp));
 
     say 'Part 1: the sum of the risk levels of all low points is ',
-        $map.low-points».risk.sum;
+        [+] $map.low-points».risk;
 
     say 'Part 2: the product of the three largest basin sizes is ',
         [×] $map.low-points».basin-size.sort.tail(3);
