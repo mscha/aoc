@@ -1,0 +1,89 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 9 -- https://adventofcode.com/2021/day/9
+
+class Point { ... }
+
+class HeightMap
+{
+    has Str $.map is required;
+
+    has @.grid = $!map.lines».comb(/\d/);
+    has Int $.height = @!grid.elems;
+    has Int $.width = @!grid[0].elems;
+
+    method point(Int $x, Int $y) { Point.new(:$x, :$y, :map(self)) }
+
+    method all-points
+    {
+        (^$!width X ^$!height).map(-> ($x, $y) { self.point($x,$y) });
+    }
+
+    method low-points
+    {
+        self.all-points.grep(*.is-low);
+    }
+}
+
+class Point
+{
+    has Int $.x is required;
+    has Int $.y is required;
+    has HeightMap $.map is required;
+
+    method neighbours
+    {
+        gather {
+            take Point.new(:x($!x-1), :$!y, :$!map) if $!x > 0;
+            take Point.new(:x($!x+1), :$!y, :$!map) if $!x < $!map.width-1;
+            take Point.new(:$!x, :y($!y-1), :$!map) if $!y > 0;
+            take Point.new(:$!x, :y($!y+1), :$!map) if $!y < $!map.height-1; 
+        }
+    }
+
+    method higher-neighbours { self.neighbours.grep(*.level > self.level) }
+
+    method level { $!map.grid[$!y;$!x] }
+    method risk { self.level + 1 }
+
+    method is-low { self.level < all self.neighbours».level }
+
+    method basin-above
+    {
+        # A point with level 9 is not in a basin
+        return Empty if self.level == 9;
+
+        gather {
+            # This point itself is in the basin
+            take self;
+            my %seen;
+            %seen{self}++;
+
+            # All higher neighbour's basins are in this point's basin
+            # but make sure we skip any points already included
+            for self.higher-neighbours -> $n {
+                for $n.basin-above -> $p {
+                    take $p unless %seen{$p}++;
+                }
+            }
+        }
+    }
+
+    method basin-size { self.basin-above.elems }
+
+    method Str { "($!x,$!y)" }
+    method gist { "($!x,$!y)" }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc09.input')
+{
+    my $map = HeightMap.new(:map($inputfile.slurp));
+
+    say 'Part 1: the sum of the risk levels of all low points is ',
+        $map.low-points».risk.sum;
+
+    say 'Part 2: the product of the three largest basin sizes is ',
+        [×] $map.low-points».basin-size.sort.tail(3);
+}
