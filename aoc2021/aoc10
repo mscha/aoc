@@ -33,8 +33,8 @@ class NavParser
     method parse(Str $line)
     {
         my @stack;
-        for $line.comb(/<&paren>/) -> $c {
-            if $c ~~ /<&open>/ {
+        for $line.comb(&paren) -> $c {
+            if $c ~~ &open {
                 @stack.push($c);
             }
             else {
