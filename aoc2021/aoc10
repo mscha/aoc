@@ -62,7 +62,6 @@ class NavParser
 
 sub MAIN(IO() $inputfile where *.f = 'aoc10.input', Bool :v(:$verbose) = False)
 {
-
     my $parser = NavParser.new;
     my $syntax-score = 0;
     my @completion-scores;
