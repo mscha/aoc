@@ -1,0 +1,89 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 10 -- https://adventofcode.com/2021/day/10
+
+class X::NavParser::InvalidMatch is Exception
+{
+    has Str $.open is required;
+    has Str $.close is required;
+
+    method message { "Not a match: $!open $!close" }
+}
+
+class X::NavParser::Incomplete is Exception
+{
+    has Str @.remaining is required;
+
+    method message { "Incomplete line: @!remaining.join(' ') still open" }
+}
+
+class NavParser
+{
+    my token open { '(' | '[' | '{' | '<' }
+    my token close { ')' | ']' | '}' | '>' }
+    my token paren { <open> | <close> }
+
+    constant %close-char = '(' => ')', '[' => ']', '{' => '}', '<' => '>';
+
+    constant %syntax-scores = ')' => 3, ']' => 57, '}' => 1197, '>' => 25137;
+    constant %completion-scores = ')' => 1, ']' => 2, '}' => 3, '>' => 4;
+
+    method parse(Str $line)
+    {
+        my @stack;
+        for $line.comb(/<&paren>/) -> $c {
+            if $c ~~ /<&open>/ {
+                @stack.push($c);
+            }
+            else {
+                my $o = @stack.pop;
+                if %close-char{$o} ne $c {
+                    X::NavParser::InvalidMatch.new(:open($o), :close($c)).throw;
+                }
+            }
+        }
+        if @stack {
+            X::NavParser::Incomplete.new(:remaining(@stack)).throw;
+        }
+    }
+
+    method syntax-score(Str $c) { %syntax-scores{$c} }
+
+    method completion-score(Str @remaining is copy) {
+        my $score = 0;
+        while my $c = @remaining.pop {
+            $score = 5×$score + %completion-scores{%close-char{$c}};
+        }
+        return $score;
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc10.input', Bool :v(:$verbose) = False)
+{
+
+    my $parser = NavParser.new;
+    my $syntax-score = 0;
+    my @completion-scores;
+    for $inputfile.lines -> $line {
+        $parser.parse($line);
+        say "Valid line: $line";
+        CATCH {
+            when X::NavParser::InvalidMatch {
+                say "$line: $_" if $verbose;
+                $syntax-score += $parser.syntax-score(.close);
+            }
+            when X::NavParser::Incomplete {
+                say "$line: $_" if $verbose;
+                @completion-scores.push: $parser.completion-score(.remaining);
+            }
+        }
+    }
+
+    say "Part 1: the total syntax error score is $syntax-score.";
+
+    dd @completion-scores if $verbose;
+    my $middle-completion-score = @completion-scores.sort[+@completion-scores div 2];
+    say "Part 2: the middle completion score is $middle-completion-score.";
+}
