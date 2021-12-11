@@ -47,20 +47,18 @@ class Cavern
 {
     has Str $.map is required;
 
-    has Int $.height;
-    has Int $.width;
-    has @.octopi;
-    has Int $.step-count = 0;
+    has @!init-levels = $!map.lines».comb(/\d/);
+    has Int $.height = @!init-levels.elems;
+    has Int $.width = @!init-levels[0].elems;
 
-    submethod TWEAK
-    {
-        my @levels = $!map.lines».comb(/\d/);
-        $!height = @levels.elems;
-        $!width = @levels[0].elems;
-        for ^$!width X ^$!height -> ($x, $y) {
-            @!octopi[$y;$x] = Octopus.new(:$x, :$y, :cavern(self), :level(@levels[$y;$x]));
-        }
-    }
+    has @.octopi = (^$!height).map(-> $y {
+            (^$!width).map(-> $x {
+                Octopus.new(:$x, :$y, :cavern(self),
+                                      :level(@!init-levels[$y;$x]));
+            });
+        });
+
+    has Int $.step-count = 0;
 
     method octopus-at(Int $x, Int $y)
     {
