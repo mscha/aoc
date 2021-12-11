@@ -32,7 +32,7 @@ class Octopus
 
     method flash
     {
-        return False unless self.is-charged;
+        return unless self.is-charged;
 
         $!flash-count++;
         $!level = 0;
