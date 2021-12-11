@@ -1,0 +1,94 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 11 -- https://adventofcode.com/2021/day/11
+
+class Cavern { ... }
+
+class Octopus
+{
+    has Int $.x is required;
+    has Int $.y is required;
+    has Cavern $.cavern is required;
+    has Int() $.level is required;
+
+    has Int $.flash-count = 0;
+
+    method neighbours
+    {
+        (-1..1 X -1..1).grep(-> ($dx, $dy) { $dx || $dy })
+                       .map(-> ($dx, $dy) { $.cavern.octopus-at($!x+$dx, $!y+$dy) })
+                       .grep(*);
+    }
+
+    method is-charged { $!level > 9 }
+
+    method increment(Bool :$flash = False)
+    {
+        $!level++ unless $!level == 0 && $flash;
+        self.flash if $flash && self.is-charged;
+    }
+
+    method flash
+    {
+        return False unless self.is-charged;
+
+        $!flash-count++;
+        $!level = 0;
+        self.neighbours».increment(:flash);
+    }
+
+    method Str { "($!x,$!y): $!level" }
+    method gist { self.Str }
+}
+
+class Cavern
+{
+    has Str $.map is required;
+
+    has Int $.height;
+    has Int $.width;
+    has @.octopi;
+    has Int $.step-count = 0;
+
+    submethod TWEAK
+    {
+        my @levels = $!map.lines».comb(/\d/);
+        $!height = @levels.elems;
+        $!width = @levels[0].elems;
+        for ^$!width X ^$!height -> ($x, $y) {
+            @!octopi[$y;$x] = Octopus.new(:$x, :$y, :cavern(self), :level(@levels[$y;$x]));
+        }
+    }
+
+    method octopus-at(Int $x, Int $y)
+    {
+        0 ≤ $x < $!width && 0 ≤ $y < $!height ?? @!octopi[$y;$x] !! Nil;
+    }
+
+    method step {
+        $!step-count++;
+        @!octopi[*;*]».increment;
+        @!octopi[*;*]».flash;
+    }
+
+    method flash-count { @!octopi[*;*]».flash-count.sum }
+
+    method all-flashed { all(@!octopi[*;*]».level) == 0 }
+
+    method Str { @!octopi.map(*».level.join).join("\n") }
+    method gist { self.Str }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc11.input')
+{
+    my $cavern = Cavern.new(:map($inputfile.slurp));
+    $cavern.step for ^100;
+    say "Part 1: after 100 steps, there have been $cavern.flash-count() flashes.";
+
+    # Start again, just in case we missed it
+    $cavern = Cavern.new(:map($inputfile.slurp));
+    $cavern.step until $cavern.all-flashed;
+    say "Part 2: after $cavern.step-count() steps, all octopi flash.";
+}
