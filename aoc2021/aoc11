@@ -60,10 +60,8 @@ class Cavern
 
     has Int $.step-count = 0;
 
-    method octopus-at(Int $x, Int $y)
-    {
-        0 ≤ $x < $!width && 0 ≤ $y < $!height ?? @!octopi[$y;$x] !! Nil;
-    }
+    multi method octopus-at(Int $x where ^$!width, Int $y where ^$!height) { @!octopi[$y;$x] }
+    multi method octopus-at(Int $x, Int $y) { Nil }
 
     method step {
         $!step-count++;
