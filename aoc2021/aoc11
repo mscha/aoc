@@ -50,15 +50,25 @@ class Cavern
     has @!init-levels = $!map.lines».comb(/\d/);
     has Int $.height = @!init-levels.elems;
     has Int $.width = @!init-levels[0].elems;
+    has @.octopi = self.init-octopi;
 
-    has @.octopi = (^$!height).map(-> $y {
+    has Int $.step-count = 0;
+
+    method init-octopi
+    {
+        (^$!height).map(-> $y {
             (^$!width).map(-> $x {
                 Octopus.new(:$x, :$y, :cavern(self),
                                       :level(@!init-levels[$y;$x]));
             });
         });
+    }
 
-    has Int $.step-count = 0;
+    method reset
+    {
+        @!octopi = self.init-octopi;
+        $!step-count = 0;
+    }
 
     multi method octopus-at(Int $x where ^$!width, Int $y where ^$!height) { @!octopi[$y;$x] }
     multi method octopus-at(Int $x, Int $y) { Nil }
@@ -83,8 +93,7 @@ sub MAIN(IO() $inputfile where *.f = 'aoc11.input')
     $cavern.step for ^100;
     say "Part 1: after 100 steps, there have been $cavern.flash-count() flashes.";
 
-    # Start again, just in case we missed it
-    $cavern = Cavern.new(:map($inputfile.slurp));
+    $cavern.reset;  # Start again, just in case we missed it
     $cavern.step until $cavern.all-flashed;
     say "Part 2: after $cavern.step-count() steps, all octopi flash.";
 }
