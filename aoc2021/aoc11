@@ -58,8 +58,7 @@ class Cavern
     {
         (^$!height).map(-> $y {
             (^$!width).map(-> $x {
-                Octopus.new(:$x, :$y, :cavern(self),
-                                      :level(@!init-levels[$y;$x]));
+                Octopus.new(:$x, :$y, :cavern(self), :level(@!init-levels[$y;$x]));
             });
         });
     }
