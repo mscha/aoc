@@ -43,20 +43,19 @@ class CaveMap
     method find-paths(Int :$extra = 0)
     {
         my @stack = ((%!caves<start>, '', $extra),);
-        my @paths;
         gather while @stack {
             my ($cave, $visited, $extra) = @stack.pop;
             next if $cave.is-start && $visited;
             next if $cave.is-small && $visited ~~ m{«$cave»} && !$extra--;
 
-            my $new-visited = $visited ?? "$visited,$cave" !! ~$cave;
+            $visited ~= ($visited ?? ',' !! '') ~ $cave;
             if $cave.is-end {
-                take $new-visited;
+                take $visited;
             }
             else {
                 @stack.append:
                     $cave.neighbours.map: -> $n {
-                        ($n, $new-visited, $extra)
+                        ($n, $visited, $extra)
                     }
             }
         }
