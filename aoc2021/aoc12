@@ -87,7 +87,7 @@ sub MAIN(IO() $inputfile where *.f = 'aoc12.input', Bool :v(:$verbose) = False)
     if $verbose { .say for @paths }
     say "Part 1: there are @paths.elems() paths through the cave system";
 
-    my @paths2 = $map.find-paths(:extra(1));
+    my @paths2 = $map.find-paths(:1extra);
     if $verbose { .say for @paths2 }
     say "Part 2: there are @paths2.elems() paths through the cave system";
 }
