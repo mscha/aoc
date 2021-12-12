@@ -1,0 +1,76 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 12 -- https://adventofcode.com/2021/day/12
+
+class Cave
+{
+    has Str $.name is required;
+
+    has Bool $.is-small = $!name eq $!name.lc;
+    has Bool $.is-start = $!name eq 'start';
+    has Bool $.is-end = $!name eq 'end';
+
+    has Cave @.neighbours;
+
+    method connect(Cave $n)
+    {
+        @!neighbours.push: $n;
+        $n.neighbours.push: self;
+    }
+
+    method Str { $!name }
+    method gist { $!name }
+}
+
+class CaveMap
+{
+    has Str @.connections is required;
+
+    has Cave %.caves;
+
+    submethod TWEAK
+    {
+        for @!connections -> $line {
+            my ($a, $b) = $line.comb(/\w+/);
+            %!caves{$a} //= Cave.new(:name($a));
+            %!caves{$b} //= Cave.new(:name($b));
+            %!caves{$a}.connect(%!caves{$b});
+        }
+    }
+
+    method find-paths(Int :$extra = 0)
+    {
+        my @queue = ((%!caves<start>, '', $extra),);
+        gather while @queue {
+            my ($cave, $visited, $extra) = @queue.shift;
+            next if $cave.is-start && $visited;
+            next if $cave.is-small && $visited ~~ m{«$cave»} && !$extra--;
+
+            $visited ~= ($visited ?? ',' !! '') ~ $cave;
+            if $cave.is-end {
+                take $visited;
+            }
+            else {
+                @queue.append:
+                    $cave.neighbours.map: -> $n {
+                        ($n, $visited, $extra)
+                    }
+            }
+        }
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc12.input', Bool :v(:$verbose) = False)
+{
+    my $map = CaveMap.new(:connections($inputfile.lines));
+
+    my @paths = $map.find-paths;
+    if $verbose { .say for @paths }
+    say "Part 1: there are @paths.elems() paths through the cave system";
+
+    my @paths2 = $map.find-paths(:1extra);
+    if $verbose { .say for @paths2 }
+    say "Part 2: there are @paths2.elems() paths through the cave system";
+}
