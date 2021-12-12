@@ -46,11 +46,13 @@ class CaveMap
 
     method find-paths(Cave $c = %!caves<start>, Int :$extra = 0)
     {
-        @!visited.push($c);
-        %!visits{$c}++;
+        # Temporarily add this visit - will be restored when leaving scope
+        (temp @!visited).push($c);
+        (temp %!visits{$c})++;
 
         my @paths;
         if $c.is-end {
+            # We've found a path
             @paths = @!visited.join(',');
         }
         else {
@@ -59,6 +61,8 @@ class CaveMap
                 next if $n.is-start;
                 my $bonus = False;
                 if $n.is-small && %!visits{$n} {
+                    # We've visited this small cave already.
+                    # See if we have a bonus visit left over, otherwise skip.
                     if $extra {
                         $bonus = True;
                     }
@@ -66,12 +70,11 @@ class CaveMap
                         next NEIGHBOUR;
                     }
                 }
+                # Find all paths continuing from this neighbour
                 @paths.append: self.find-paths($n, :extra($extra - $bonus));
             }
         }
 
-        @!visited.pop;
-        %!visits{$c}--;
         return @paths;
     }
 }
