@@ -1,0 +1,90 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 12 -- https://adventofcode.com/2021/day/12
+
+class Cave
+{
+    has Str $.name is required;
+
+    has Bool $.is-small = $!name eq $!name.lc;
+    has Bool $.is-start = $!name eq 'start';
+    has Bool $.is-end = $!name eq 'end';
+
+    has Cave @.neighbours;
+
+    method connect(Cave $n)
+    {
+        @!neighbours.push: $n;
+        $n.neighbours.push: self;
+    }
+
+    method Str { $!name }
+    method gist { $!name }
+}
+
+class CaveMap
+{
+    has Str @.connections is required;
+
+    has Cave %.caves;
+
+    has Cave @!visited;
+    has Int %!visits;
+
+    submethod TWEAK
+    {
+        for @!connections -> $line {
+            my ($a, $b) = $line.comb(/\w+/);
+            %!caves{$a} //= Cave.new(:name($a));
+            %!caves{$b} //= Cave.new(:name($b));
+            %!caves{$a}.connect(%!caves{$b});
+        }
+        %!visits{$_} = 0 for %!caves.keys;
+    }
+
+    method find-paths(Cave $c = %!caves<start>, Int :$extra = 0)
+    {
+        @!visited.push($c);
+        %!visits{$c}++;
+
+        my @paths;
+        if $c.is-end {
+            @paths = @!visited.join(',');
+        }
+        else {
+            NEIGHBOUR:
+            for $c.neighbours.sort(*.name) -> $n {
+                next if $n.is-start;
+                my $bonus = False;
+                if $n.is-small && %!visits{$n} {
+                    if $extra {
+                        $bonus = True;
+                    }
+                    else {
+                        next NEIGHBOUR;
+                    }
+                }
+                @paths.append: self.find-paths($n, :extra($extra - $bonus));
+            }
+        }
+
+        @!visited.pop;
+        %!visits{$c}--;
+        return @paths;
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc12.input', Bool :v(:$verbose) = False)
+{
+    my $map = CaveMap.new(:connections($inputfile.lines));
+
+    my @paths = $map.find-paths;
+    if $verbose { .say for @paths }
+    say "Part 1: there are @paths.elems() paths through the cave system";
+
+    my @paths2 = $map.find-paths(:extra(1));
+    if $verbose { .say for @paths2 }
+    say "Part 2: there are @paths2.elems() paths through the cave system";
+}
