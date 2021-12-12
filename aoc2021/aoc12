@@ -58,7 +58,7 @@ class CaveMap
         else {
             NEIGHBOUR:
             for $c.neighbours.sort(*.name) -> $n {
-                next if $n.is-start;
+                next NEIGHBOUR if $n.is-start;
                 my $bonus = False;
                 if $n.is-small && %!visits{$n} {
                     # We've visited this small cave already.
