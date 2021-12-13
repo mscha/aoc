@@ -26,7 +26,7 @@ class Paper
     has Str $.instructions is required;
     has Bool $.verbose = False;
 
-    has @.grid = [[SPACE xx 2000] xx 2000];
+    has @.grid;
     has Int $.width = 0;
     has Int $.height = 0;
 
@@ -39,6 +39,20 @@ class Paper
             or die "Invalid instructions!";
     }
 
+    method count-dots
+    {
+        @!dots-after-fold.push: @!grid[*;*].grep(DOT).elems;
+    }
+
+    method complete-grid
+    {
+        for ^$!width X ^$!height -> ($x, $y) {
+            @!grid[$y;$x] //= SPACE;
+        }
+        self.count-dots;
+        say self if $!verbose;
+    }
+
     method dot($/)
     {
         @!grid[$<y>;$<x>] = DOT;
@@ -48,45 +62,47 @@ class Paper
 
     method fold-x($/)
     {
-        self.count-dots if $!num-folds == 0;
-        say self, "\n" if $!verbose && $!num-folds == 0;
-        say "Fold along x=$<x>" if $!verbose;
-        $!num-folds++;
+        # Before the first fold, make sure the grid is fully initialized
+        self.complete-grid unless $!num-folds++;
 
+        # Copy the dots right of the fold to the left
         for ^$!height -> $y {
             for 1 .. ($!width - $<x> - 1) -> $dx {
                 @!grid[$y;$<x>-$dx] = DOT if @!grid[$y;$<x>+$dx] eq DOT;
             }
         }
+
+        # Truncate the right end of the paper
         $!width = +$<x>;
+        $_[$!width..*] :delete for @!grid;
         self.count-dots;
 
-        say self, "\n" if $!verbose;
+        say "Fold along x=$<x>" if $!verbose;
+        say self if $!verbose;
     }
 
     method fold-y($/)
     {
-        self.count-dots if $!num-folds == 0;
-        say self, "\n" if $!verbose && $!num-folds == 0;
-        say "Fold along y=$<y>" if $!verbose;
-        $!num-folds++;
+        # Before the first fold, make sure the grid is fully initialized
+        self.complete-grid unless $!num-folds++;
 
+        # Copy the dots below the fold to the top
         for ^$!width -> $x {
             for 1 .. ($!height - $<y> - 1) -> $dy {
                 @!grid[$<y>-$dy;$x] = DOT if @!grid[$<y>+$dy;$x] eq DOT;
             }
         }
+
+        # Truncate the bottom of the paper
         $!height = +$<y>;
+        @!grid[$!height..*] :delete;
         self.count-dots;
 
-        say self, "\n" if $!verbose;
+        say "Fold along y=$<y>" if $!verbose;
+        say self if $!verbose;
     }
 
-    method count-dots {
-        @!dots-after-fold.push: @!grid[^$!height;^$!width].grep(DOT).elems;
-    }
-
-    method Str { @!grid[^$!height].map(-> @row { @row[^$!width].join }).join("\n") }
+    method Str { @!grid.map(*.join ~ "\n").join }
     method gist { self.Str }
 }
 
@@ -97,5 +113,5 @@ sub MAIN(IO() $inputfile where *.f = 'aoc13.input', Bool :v(:$verbose) = False)
     say "Part 1: the number of dots after one fold is: $paper.dots-after-fold()[1]";
 
     say "Part 2: the activation code is:";
-    say $paper;
+    print $paper;
 }
