@@ -1,0 +1,101 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 13 -- https://adventofcode.com/2021/day/13
+
+constant DOT = '██';
+constant SPACE = '░░';
+
+grammar Instructions
+{
+    rule TOP { <dot>+ <fold>+ }
+
+    rule dot { <x>','<y> }
+
+    rule fold { <fold-x> | <fold-y> }
+    rule fold-x { 'fold along x='<x> }
+    rule fold-y { 'fold along y='<y> }
+
+    token x { \d+ }
+    token y { \d+ }
+}
+
+class Paper
+{
+    has Str $.instructions is required;
+    has Bool $.verbose = False;
+
+    has @.grid = [[SPACE xx 2000] xx 2000];
+    has Int $.width = 0;
+    has Int $.height = 0;
+
+    has Int $.num-folds = 0;
+    has Int @.dots-after-fold;
+
+    submethod TWEAK
+    {
+        Instructions.parse($!instructions, :actions(self))
+            or die "Invalid instructions!";
+    }
+
+    method dot($/)
+    {
+        @!grid[$<y>;$<x>] = DOT;
+        $!width max= $<x>+1;
+        $!height max= $<y>+1;
+    }
+
+    method fold-x($/)
+    {
+        self.count-dots if $!num-folds == 0;
+        say self, "\n" if $!verbose && $!num-folds == 0;
+        say "Fold along x=$<x>" if $!verbose;
+        $!num-folds++;
+
+        for ^$!height -> $y {
+            for 1 .. ($!width - $<x> - 1) -> $dx {
+                @!grid[$y;$<x>-$dx] = DOT if @!grid[$y;$<x>+$dx] eq DOT;
+            }
+        }
+        $!width = +$<x>;
+        self.count-dots;
+
+        say self, "\n" if $!verbose;
+    }
+
+    method fold-y($/)
+    {
+        self.count-dots if $!num-folds == 0;
+        say self, "\n" if $!verbose && $!num-folds == 0;
+        say "Fold along y=$<y>" if $!verbose;
+        $!num-folds++;
+
+        for ^$!width -> $x {
+            for 1 .. ($!height - $<y> - 1) -> $dy {
+                @!grid[$<y>-$dy;$x] = DOT if @!grid[$<y>+$dy;$x] eq DOT;
+            }
+        }
+        $!height = +$<y>;
+        self.count-dots;
+
+        say self, "\n" if $!verbose;
+    }
+
+    method count-dots {
+        @!dots-after-fold.push: @!grid[^$!height;^$!width].grep(DOT).elems;
+    }
+
+    method Str { @!grid[^$!height].map(-> @row { @row[^$!width].join }).join("\n") }
+    method gist { self.Str }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc13.input', Bool :v(:$verbose) = False)
+{
+    my $paper = Paper.new(:instructions($inputfile.slurp), :$verbose);
+
+    say "Part 1: the number of dots after one fold is: $paper.dots-after-fold()[1]";
+
+    say "Part 2: the activation code is:";
+    say $paper;
+}
