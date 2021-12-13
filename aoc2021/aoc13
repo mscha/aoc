@@ -78,6 +78,7 @@ class Paper
         # Truncate the right end of the paper
         $!width = +$<x>;
         $_[$!width..*] :delete for @!grid;
+
         self.count-dots;
 
         say "Fold along x=$<x>" if $!verbose;
@@ -99,6 +100,7 @@ class Paper
         # Truncate the bottom of the paper
         $!height = +$<y>;
         @!grid[$!height..*] :delete;
+
         self.count-dots;
 
         say "Fold along y=$<y>" if $!verbose;
