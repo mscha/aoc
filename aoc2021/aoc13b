@@ -1,0 +1,122 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 13 -- https://adventofcode.com/2021/day/13
+
+constant DOT = '██';
+constant SPACE = '░░';
+
+grammar Instructions
+{
+    rule TOP { <dot>+ <fold>+ }
+
+    rule dot { <x>','<y> }
+
+    rule fold { <fold-x> | <fold-y> }
+    rule fold-x { 'fold along x='<x> }
+    rule fold-y { 'fold along y='<y> }
+
+    token x { \d+ }
+    token y { \d+ }
+}
+
+class Paper
+{
+    has Str $.instructions is required;
+    has Bool $.verbose = False;
+
+    has @.coords;
+    has Int $.width = 0;
+    has Int $.height = 0;
+
+    has Int $.num-folds = 0;
+    has Int @.dots-after-fold;
+
+    submethod TWEAK
+    {
+        Instructions.parse($!instructions, :actions(self))
+            or die "Invalid instructions!";
+    }
+
+    method count-dots
+    {
+        @!dots-after-fold.push: @!coords.elems;
+    }
+
+    method complete-grid
+    {
+        $!width = @!coords»[0].max + 1;
+        $!height = @!coords»[1].max + 1;
+
+        self.count-dots;
+
+        say self if $!verbose;
+    }
+
+    method dot($/)
+    {
+        @!coords.push: [+$<x>, +$<y>];
+    }
+
+    method fold-x($/)
+    {
+        # Before the first fold, make sure the grid is fully initialized
+        self.complete-grid unless $!num-folds++;
+
+        # Copy the dots right of the fold to the left
+        for @!coords.grep(*[0] > $<x>) -> $p {
+            $p[0] = 2*$<x> - $p[0];
+        }
+
+        # Remove duplicate dots
+        @!coords .= unique(:as(*.Str));
+
+        # Truncate the right end of the paper
+        $!width = +$<x>;
+
+        self.count-dots;
+
+        say "Fold along x=$<x>" if $!verbose;
+        say self if $!verbose;
+    }
+
+    method fold-y($/)
+    {
+        # Before the first fold, make sure the grid is fully initialized
+        self.complete-grid unless $!num-folds++;
+
+        # Copy the dots below the fold to the top
+        for @!coords.grep(*[1] > $<y>) -> $p {
+            $p[1] = 2*$<y> - $p[1];
+        }
+
+        # Remove duplicate dots
+        @!coords .= unique(:as(*.Str));
+
+        # Truncate the bottom of the paper
+        $!height = +$<y>;
+
+        self.count-dots;
+
+        say "Fold along y=$<y>" if $!verbose;
+        say self if $!verbose;
+    }
+
+    method Str
+    {
+        my @grid = [[SPACE xx $!width] xx $!height];
+        for @!coords -> ($x, $y) {
+            @grid[$y;$x] = DOT;
+        }
+        return @grid.map(*.join ~ "\n").join;
+    }
+    method gist { self.Str }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc13.input', Bool :v(:$verbose) = False)
+{
+    my $paper = Paper.new(:instructions($inputfile.slurp), :$verbose);
+    say "Part 1: the number of dots after one fold is: $paper.dots-after-fold()[1]";
+    say "Part 2: the activation code is:\n$paper";
+}
