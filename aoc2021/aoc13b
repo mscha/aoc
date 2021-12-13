@@ -64,7 +64,7 @@ class Paper
         # Before the first fold, make sure the grid is fully initialized
         self.complete-grid unless $!num-folds++;
 
-        # Copy the dots right of the fold to the left
+        # Move the dots right of the fold to the left
         for @!coords.grep(*[0] > $<x>) -> $p {
             $p[0] = 2*$<x> - $p[0];
         }
@@ -86,7 +86,7 @@ class Paper
         # Before the first fold, make sure the grid is fully initialized
         self.complete-grid unless $!num-folds++;
 
-        # Copy the dots below the fold to the top
+        # Move the dots below the fold to the top
         for @!coords.grep(*[1] > $<y>) -> $p {
             $p[1] = 2*$<y> - $p[1];
         }
