@@ -4,8 +4,8 @@ $*OUT.out-buffer = False;   # Autoflush
 
 # Advent of Code 2021 day 13 -- https://adventofcode.com/2021/day/13
 
-constant DOT = '█';
-constant SPACE = '░';
+constant DOT = '██';
+constant SPACE = '░░';
 
 grammar Instructions
 {
