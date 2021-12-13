@@ -46,18 +46,21 @@ class Paper
 
     method complete-grid
     {
+        $!height = @!grid.elems;
+        $!width = @!grid.grep(*)».elems.max;
+
         for ^$!width X ^$!height -> ($x, $y) {
             @!grid[$y;$x] //= SPACE;
         }
+
         self.count-dots;
+
         say self if $!verbose;
     }
 
     method dot($/)
     {
         @!grid[$<y>;$<x>] = DOT;
-        $!width max= $<x>+1;
-        $!height max= $<y>+1;
     }
 
     method fold-x($/)
