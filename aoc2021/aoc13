@@ -114,8 +114,6 @@ class Paper
 sub MAIN(IO() $inputfile where *.f = 'aoc13.input', Bool :v(:$verbose) = False)
 {
     my $paper = Paper.new(:instructions($inputfile.slurp), :$verbose);
-
     say "Part 1: the number of dots after one fold is: $paper.dots-after-fold()[1]";
-
     say "Part 2: the activation code is:\n$paper";
 }
