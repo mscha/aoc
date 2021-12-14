@@ -56,7 +56,7 @@ class Polymer
 
     method length { %!frequencies.values.sum }
 
-    method strength { [R-] $!frequencies.values.minmax.bounds }
+    method strength { [R-] %!frequencies.values.minmax.bounds }
 }
 
 sub MAIN(IO() $inputfile where *.f = 'aoc14.input', Bool :v(:$verbose) = False)
