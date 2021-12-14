@@ -42,7 +42,7 @@ class Polymer
 
     method grow
     {
-        # Each pair is replaced by two pair, by inserting the element from the rule.
+        # Each pair is replaced by two pairs, following the appropriate rule.
         my %new-pairs;
         for %!pairs -> $p {
             my ($a, $b) = $p.key.comb;
