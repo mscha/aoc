@@ -22,7 +22,6 @@ class Polymer
 
     has Int %.pairs;
     has Str %.rules;
-
     has Int $.length = 0;
     has Int %.frequencies;
     has Int $.step-count = 0;
