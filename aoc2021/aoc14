@@ -18,26 +18,32 @@ grammar PolymerSpecs
 class Polymer
 {
     has Str $.specs is required;
+    has Bool $.verbose = False;
 
     has Int %.pairs;
     has Str %.rules;
+
+    has Int $.length = 0;
     has Int %.frequencies;
+    has Int $.step-count = 0;
 
     submethod TWEAK
     {
         PolymerSpecs.parse($!specs, :actions(self))
             or die "Unable to parse specifications!";
+        say "Initial length: $!length" if $!verbose;
     }
 
     method template($/) {
         my @elems = $/.comb;                    # 'N', 'N', 'C', 'B'
         %!frequencies = bag @elems;             # :N(2), :C(1), :B(1)
         %!pairs = bag @elems Z~ @elems[1..*];   # :NN(1), :NC(1), :CB(1)
+        $!length = +@elems;                     # 4
     }
 
     method insertion($/)
     {
-        %!rules{$<pair>} = ~$<element>;
+        %!rules{$<pair>} = ~$<element>;         # 'CH' => 'B'
     }
 
     method grow
@@ -45,34 +51,32 @@ class Polymer
         # Each pair is replaced by two pairs, following the appropriate rule.
         my %new-pairs;
         for %!pairs -> $p {
-            my ($a, $b) = $p.key.comb;
+            # Find the inserted character and increase its frequency.
             my $ins = %!rules{$p.key};
             %!frequencies{$ins} += $p.value;
+            $!length += $p.value;
+
+            # Generate the two new pairs and remember their frequency.
+            my ($a, $b) = $p.key.comb;
             %new-pairs{$a ~ $ins} += $p.value;
             %new-pairs{$ins ~ $b} += $p.value;
         }
         %!pairs = %new-pairs;
-    }
 
-    method length { %!frequencies.values.sum }
+        $!step-count++;
+        say "After step $!step-count: length $!length" if $!verbose;
+    }
 
     method strength { [R-] %!frequencies.values.minmax.bounds }
 }
 
 sub MAIN(IO() $inputfile where *.f = 'aoc14.input', Bool :v(:$verbose) = False)
 {
-    my $poly = Polymer.new(:specs($inputfile.slurp));
-    say "Initial length: ", $poly.length if $verbose;
+    my $poly = Polymer.new(:specs($inputfile.slurp), :$verbose);
 
-    for 1..10 -> $step {
-        $poly.grow;
-        say "After step $step: length ", $poly.length if $verbose;
-    }
+    $poly.grow for 1..10;
     say "Part 1: ", $poly.strength;
 
-    for 11..40 -> $step {
-        $poly.grow;
-        say "After step $step: length ", $poly.length if $verbose;
-    }
+    $poly.grow for 11..40;
     say "Part 2: ", $poly.strength;
 }
