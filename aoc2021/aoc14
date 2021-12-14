@@ -1,0 +1,92 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 14 -- https://adventofcode.com/2021/day/14
+
+grammar PolymerSpecs
+{
+    rule TOP { <template> <insertion>+ }
+
+    token template { <element>+ }
+    rule insertion { <pair> '->' <element> }
+
+    token pair { <element><element> }
+    token element { <[A..Z]> }
+}
+
+class Polymer
+{
+    has Str $.specs is required;
+
+    has Int %.pairs;
+    has Str %.rules;
+    has Str $!last-elem;
+
+    submethod TWEAK
+    {
+        PolymerSpecs.parse($!specs, :actions(self))
+            or die "Unable to parse specifications!";
+    }
+
+    method template($/) {
+        my @elems = $/.comb;
+        %!pairs = bag @elems Z~ @elems[1..*];
+        $!last-elem = @elems.tail;
+    }
+
+    method insertion($/)
+    {
+        %!rules{$<pair>} = ~$<element>;
+    }
+
+    method grow
+    {
+        # Each pair is replaced by two pair, by inserting the element from the rule.
+        my %new-pairs;
+        for %!pairs -> $p {
+            my ($a, $b) = $p.key.comb;
+            my $ins = %!rules{$p.key};
+            %new-pairs{$a ~ $ins} += $p.value;
+            %new-pairs{$ins ~ $b} += $p.value;
+        }
+        %!pairs = %new-pairs;
+    }
+
+    method length { %!pairs.values.sum + 1 }
+
+    method frequencies
+    {
+        my Int %freq;
+
+        # Count the first element of each pair
+        for %!pairs -> $p {
+            %freq{$p.key.substr(0,1)} += $p.value;
+        }
+
+        # The last element of the polymer isn't counted yet
+        %freq{$!last-elem}++;
+
+        return %freq;
+    }
+
+    method strength { [R-] self.frequencies.values.minmax.bounds }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc14.input', Bool :v(:$verbose) = False)
+{
+    my $poly = Polymer.new(:specs($inputfile.slurp));
+    say "Initial length: ", $poly.length if $verbose;
+
+    for 1..10 -> $step {
+        $poly.grow;
+        say "After step $step: length ", $poly.length if $verbose;
+    }
+    say "Part 1: ", $poly.strength;
+
+    for 11..40 -> $step {
+        $poly.grow;
+        say "After step $step: length ", $poly.length if $verbose;
+    }
+    say "Part 2: ", $poly.strength;
+}
