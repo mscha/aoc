@@ -21,7 +21,7 @@ class Polymer
 
     has Int %.pairs;
     has Str %.rules;
-    has Str $!last-elem;
+    has Int %.frequencies;
 
     submethod TWEAK
     {
@@ -31,8 +31,8 @@ class Polymer
 
     method template($/) {
         my @elems = $/.comb;
+        %!frequencies{@elems}»++;
         %!pairs = bag @elems Z~ @elems[1..*];
-        $!last-elem = @elems.tail;
     }
 
     method insertion($/)
@@ -47,6 +47,7 @@ class Polymer
         for %!pairs -> $p {
             my ($a, $b) = $p.key.comb;
             my $ins = %!rules{$p.key};
+            %!frequencies{$ins} += $p.value;
             %new-pairs{$a ~ $ins} += $p.value;
             %new-pairs{$ins ~ $b} += $p.value;
         }
@@ -54,21 +55,6 @@ class Polymer
     }
 
     method length { %!pairs.values.sum + 1 }
-
-    method frequencies
-    {
-        my Int %freq;
-
-        # Count the first element of each pair
-        for %!pairs -> $p {
-            %freq{$p.key.substr(0,1)} += $p.value;
-        }
-
-        # The last element of the polymer isn't counted yet
-        %freq{$!last-elem}++;
-
-        return %freq;
-    }
 
     method strength { [R-] self.frequencies.values.minmax.bounds }
 }
