@@ -41,7 +41,7 @@ class Cavern
         
         # Dijkstra's algorithm
         loop {
-            # Find the unvisited node with the lowest total risk
+            # Find the unvisited node with the lowest known total risk
             my $xy = %total-risk.min(*.value).key;
             my ($x, $y) = $xy.split(',')».Int;
             say "Considering ($x,$y) with risk %total-risk{$xy} ..." if $!verbose;
