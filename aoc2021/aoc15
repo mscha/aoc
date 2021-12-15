@@ -1,0 +1,77 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 15 -- https://adventofcode.com/2021/day/15
+
+class Cavern
+{
+    has Str $.map is required;
+    has Int $.repeat = 1;
+    has Bool $.verbose = False;
+
+    has @.base-risk = $!map.lines.map(*.comb(/\d/)».Int);
+    has Int $.base-height = @!base-risk.elems;
+    has Int $.base-width = @!base-risk[0].elems;
+
+    has Int $.height = $!base-height × $!repeat;
+    has Int $.width = $!base-width × $!repeat;
+    has Int $.max-x = $!width - 1;
+    has Int $.max-y = $!height - 1;
+
+    sub wrap9(Int $n) { ($n-1) % 9 + 1 }
+
+    method neighbours(Int $x, Int $y)
+    {
+        ([$x+1, $y], [$x, $y+1], [$x-1, $y], [$x, $y-1]).grep: -> ($x1, $y1) {
+                0 ≤ $x1 < $!width && 0 ≤ $y1 < $!height
+            }
+    }
+
+    method risk($x,$y)
+    {
+        return wrap9(@!base-risk[$y % $!base-height; $x % $!base-width]
+                            + $y div $!base-height + $x div $!base-width);
+    }
+
+    method lowest-risk
+    {
+        my %visited;
+        my %total-risk = '0,0' => 0;
+        
+        # Dijkstra's algorithm
+        loop {
+            # Find the unvisited node with the lowest total risk
+            my $xy = %total-risk.min(*.value).key;
+            my ($x, $y) = $xy.split(',')».Int;
+            say "Considering ($x,$y) with risk %total-risk{$xy} ..." if $!verbose;
+
+            # Are we at our destination?  Them we're done
+            return %total-risk{$xy} if $x == $!max-x && $y == $!max-y;
+
+            # Find all unvisited neighbours of the current node
+            my @neigh = self.neighbours($x,$y)
+                            .grep(-> ($x1,$y1) { !%visited{"$x1,$y1"} });
+
+            # Check the distance to these neighbours via the current node, and
+            # if shorter than the previous distance, keep it
+            for @neigh -> ($x1, $y1) {
+                %total-risk{"$x1,$y1"} min= %total-risk{$xy} + self.risk($x1,$y1);
+                say " - risk at ($x1,$y1) now %total-risk{"$x1,$y1"}" if $!verbose;
+            }
+
+            # Mark the current node as visited, and delete its total risk
+            %visited{$xy} = True;
+            %total-risk{$xy} :delete;
+        }
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc15.input', Bool :v(:$verbose) = False)
+{
+    my $cavern = Cavern.new(:map($inputfile.slurp), :$verbose);
+    say "Part 1: the lowest total risk is ", $cavern.lowest-risk;
+
+    my $cavern5 = Cavern.new(:map($inputfile.slurp), :5repeat, :$verbose);
+    say "Part 2: the lowest total risk is ", $cavern5.lowest-risk;
+}
