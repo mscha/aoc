@@ -4,7 +4,7 @@ $*OUT.out-buffer = False;   # Autoflush
 
 # Advent of Code 2021 day 16 -- https://adventofcode.com/2021/day/16
 
-enum PacketType <ADD MUL MIN MAX VAL LTH GTH EQU>;
+enum PacketType <ADD MUL MIN MAX VAL GTH LTH EQU>;
 
 class Packet
 {
@@ -31,8 +31,8 @@ class OperatorPacket is Packet
             return   [×] @!subpackets».value when MUL;
             return [min] @!subpackets».value when MIN;
             return [max] @!subpackets».value when MAX;
-            return   [>] @!subpackets».value when LTH;
-            return   [<] @!subpackets».value when GTH;
+            return   [>] @!subpackets».value when GTH;
+            return   [<] @!subpackets».value when LTH;
             return  [==] @!subpackets».value when EQU;
         }
     }
