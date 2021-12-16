@@ -23,9 +23,12 @@ class Cavern
 
     method neighbours(Int $x, Int $y)
     {
-        ([$x+1, $y], [$x, $y+1], [$x-1, $y], [$x, $y-1]).grep: -> ($x1, $y1) {
-                0 ≤ $x1 < $!width && 0 ≤ $y1 < $!height
-            }
+        gather {
+            take [$x+1, $y] if $x < $!max-x;
+            take [$x, $y+1] if $y < $!max-y;
+            take [$x-1, $y] if $x > 0;
+            take [$x, $y-1] if $y > 0;
+        }
     }
 
     method risk($x,$y)
