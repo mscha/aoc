@@ -93,9 +93,9 @@ class Message
                 $bitcount += 15;
                 while $length > 0 {
                     my $sub = self.get-packet;
-                    @subpackets.append($sub);
                     $length -= $sub.bitcount;
                     $bitcount += $sub.bitcount;
+                    @subpackets.append($sub);
                 }
             }
 
@@ -105,9 +105,9 @@ class Message
                 $bitcount += 11;
                 while $length > 0 {
                     my $sub = self.get-packet;
-                    @subpackets.append($sub);
                     $length--;
                     $bitcount += $sub.bitcount;
+                    @subpackets.append($sub);
                 }
             }
         }
