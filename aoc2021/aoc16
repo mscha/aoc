@@ -1,0 +1,150 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 16 -- https://adventofcode.com/2021/day/16
+
+enum PacketType <ADD MUL MIN MAX VAL LTH GTH EQU>;
+
+class Packet
+{
+    has Int $.version is required;
+    has PacketType $.type is required;
+    has Int $.bitcount is required;
+
+    method value { ... }
+}
+
+class ValuePacket is Packet
+{
+    has Int $.value is required;
+}
+
+class OperatorPacket is Packet
+{
+    has Packet @.subpackets;
+
+    method value
+    {
+        given $.type {
+            return   [+] @!subpackets».value when ADD;
+            return   [×] @!subpackets».value when MUL;
+            return [min] @!subpackets».value when MIN;
+            return [max] @!subpackets».value when MAX;
+            return   [>] @!subpackets».value when LTH;
+            return   [<] @!subpackets».value when GTH;
+            return  [==] @!subpackets».value when EQU;
+        }
+    }
+}
+
+class Message
+{
+    has Str $.hex is required;
+    has Bool $.verbose = False;
+
+    has Int @.bits = parse-hex($!hex);
+
+    has Packet @.packets;
+    has Int $.version-sum = 0;
+
+    submethod TWEAK
+    {
+        while @!bits[7].defined {       # At least 8 bits left
+            @!packets.append: self.get-packet;
+        }
+    }
+
+    method get-packet
+    {
+        my $version = self.get-value(3);
+        $!version-sum += $version;
+        my $type = PacketType(self.get-value(3));
+        return self.read-packet($version, $type);
+    }
+
+    # Value packet
+    multi method read-packet(Int $version, VAL)
+    {
+        my $value = 0;
+        my $bitcount = 6;
+        loop {
+            my $continue = self.get-value(1);
+            my $v = self.get-value(4);
+            $bitcount += 5;
+            $value = $value × 16 + $v;
+            last unless $continue;
+        }
+        say "Value packet: $value" if $!verbose;
+        return ValuePacket.new(:$version, :type(VAL), :$bitcount, :$value);
+    }
+
+    # Operator packet
+    multi method read-packet(Int $version, PacketType $type)
+    {
+        my $lengthType = self.get-value(1);
+        my @subpackets;
+        my $bitcount = 7;
+        say "Operator packet" if $!verbose;
+        given $lengthType {
+            when 0 {
+                # Length in bits
+                my $length = self.get-value(15);
+                $bitcount += 15;
+                while $length > 0 {
+                    my $sub = self.get-packet;
+                    @subpackets.append($sub);
+                    $length -= $sub.bitcount;
+                    $bitcount += $sub.bitcount;
+                }
+            }
+
+            when 1 {
+                # Length in subpackets
+                my $length = self.get-value(11);
+                $bitcount += 11;
+                while $length > 0 {
+                    my $sub = self.get-packet;
+                    @subpackets.append($sub);
+                    $length--;
+                    $bitcount += $sub.bitcount;
+                }
+            }
+        }
+
+        say "Operator packet has @subpackets.elems() subpackets" if $!verbose;
+        return OperatorPacket.new(:$version, :$type, :$bitcount, :@subpackets);
+    }
+
+    sub parse-hex(Str $hex)
+    {
+        gather for $hex.comb -> $x {
+            take $_.Int for $x.parse-base(16).fmt('%04b').comb;
+        }
+    }
+
+    method get-bits(Int $b = 1)
+    {
+        die "Not enough bits available!  ($b needed, @!bits.elems() present)"
+                    unless @!bits[$b-1].defined;
+        return @!bits.shift xx $b
+    }
+
+    method get-value(Int $b)
+    {
+        return self.get-bits($b).join.parse-base(2);
+    }
+
+}
+
+multi sub MAIN(IO() $inputfile where *.f = 'aoc16.input', Bool :v(:$verbose) = False)
+{
+    MAIN($inputfile.slurp.trim, :$verbose);
+}
+
+multi sub MAIN(Str $input where /^<[0..9A..F]>+$/, Bool :v(:$verbose) = False)
+{
+    my $msg = Message.new(:hex($input), :$verbose);
+    say "Part 1: the sum of all versions is ", $msg.version-sum;
+    say "Part 2: the value of the message is ", $msg.packets[0].value;
+}
