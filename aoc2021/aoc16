@@ -142,7 +142,7 @@ multi sub MAIN(IO() $inputfile where *.f = 'aoc16.input', Bool :v(:$verbose) = F
     MAIN($inputfile.slurp.trim, :$verbose);
 }
 
-multi sub MAIN(Str $input where /^<[0..9A..F]>+$/, Bool :v(:$verbose) = False)
+multi sub MAIN(Str $input where /^<xdigit>+$/, Bool :v(:$verbose) = False)
 {
     my $msg = Message.new(:hex($input), :$verbose);
     say "Part 1: the sum of all versions is ", $msg.version-sum;
