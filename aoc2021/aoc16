@@ -119,7 +119,7 @@ class Message
     sub parse-hex(Str $hex)
     {
         gather for $hex.comb -> $x {
-            take $_.Int for $x.parse-base(16).fmt('%04b').comb;
+            .take for $x.parse-base(16).fmt('%04b').comb».Int;
         }
     }
 
