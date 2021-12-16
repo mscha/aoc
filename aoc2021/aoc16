@@ -85,7 +85,7 @@ class Message
         my $lengthType = self.get-value(1);
         my @subpackets;
         my $bitcount = 7;
-        say "Operator packet" if $!verbose;
+        say "Operator packet: $type" if $!verbose;
         given $lengthType {
             when 0 {
                 # Length in bits
@@ -146,5 +146,5 @@ multi sub MAIN(Str $input where /^<xdigit>+$/, Bool :v(:$verbose) = False)
 {
     my $msg = Message.new(:hex($input), :$verbose);
     say "Part 1: the sum of all versions is ", $msg.version-sum;
-    say "Part 2: the value of the message is ", $msg.packets[0].value;
+    say "Part 2: the value of the message is ", +$msg.packets[0].value;
 }
