@@ -1,0 +1,124 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 17 -- https://adventofcode.com/2021/day/17
+
+class Probe
+{
+    has Range $.target-x is required;
+    has Range $.target-y is required;
+    has Bool $.verbose = False;
+
+    has Int $.x = 0;
+    has Int $.y = 0;
+    has Int $.vx = 0;
+    has Int $.vy = 0;
+
+    has Int $.step-count = 0;
+    has Int $.max-y = $!y;
+
+    has @.working-velocities;
+    has Int $.max-height = 0;
+
+    method reset(:$x = 0, :$y = 0, :$vx = 0, :$vy = 0)
+    {
+        $!x = $x; $!y = $y;
+        $!vx = $vx; $!vy = $vy;
+
+        $!step-count = 0;
+        $!max-y = $y;
+    }
+
+    method step
+    {
+        $!x += $!vx; $!y += $!vy;
+
+        $!vx-- if $!vx > 0;
+        $!vy--;
+
+        $!step-count++;
+        $!max-y max= $!y;
+    }
+
+    method in-target { $!x ~~ $!target-x && $!y ~~ $!target-y }
+
+    method step-to-target
+    {
+        # Keep stepping until we're any of:
+        #  - within the target
+        #  - to the right of the target
+        #  - below the target and not moving horizontally
+        self.step until self.in-target ||
+                        $!x > $!target-x.max ||
+                        ($!y < $!target-y.min && $!vx == 0);
+
+        return self.in-target;
+    }
+
+    method find-possible-velocities
+    {
+        # First, find the slowest horizontal speed that gets you to the target
+        my $min-vx;
+        for 1..∞ -> $vx {
+            self.reset(:$vx);
+            self.step until $!vx == 0;
+            if $!x ≥ $!target-x.min {
+                $min-vx = $vx;
+                last;
+            }
+        }
+        say "Minimum horizontal speed to reach the target: $min-vx" if $!verbose;
+
+        # The fastest speed is the one that gets you to the end of the target
+        # in one step.  (Way too fast, of course.)
+        my $max-vx = $!target-x.max;
+        say "Maximum horizontal speed to reach the target: $max-vx" if $!verbose;
+
+        # Try horizontal speeds starting with the slowest
+        VX:
+        for $min-vx .. $max-vx -> $vx {
+            # Inefficient lower bound for the vertical speed is the bottom of
+            # the target area.  (If lower, then you'll certainly undershoot
+            # after the first step.)
+            # If the target happens to be above you, choose 0 as the minimum.
+            my $min-vy = 0 min $!target-y.min;
+
+            # TODO
+            # We need an upper bound for the vertical speed, but I can't figure out
+            # how - in the example, why does 6,vy with vy > 9 never hit the target??
+            # For now, pick an upper bound that seems safe enough.
+            my $max-vy = 500;
+
+            VY:
+            for $min-vy .. $max-vy -> $vy {
+                self.reset(:$vx, :$vy);
+                if self.step-to-target {
+                    @!working-velocities.push: [$vx,$vy];
+                    say "Speed $vx,$vy gets you to the target, max. height $!max-y."
+                            if $!verbose;
+                    if $!max-y > $!max-height {
+                        say "New record!" if $!verbose;
+                        $!max-height = $!max-y;
+                    }
+                }
+                else {
+                    # If we've overshot the target, we know we're too fast
+                    last VY if $!x > $!target-x.max && $!y ≥ $!target-y.min;
+                }
+            }
+        }
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc17.input', Bool :v(:$verbose) = False)
+{
+    my token integer { '-'? \d+ }
+
+    my ($x0, $x1, $y0, $y1) = $inputfile.slurp.match(/<&integer>+/, :g);
+    my $probe = Probe.new(:target-x($x0..$x1), :target-y($y0..$y1), :$verbose);
+
+    $probe.find-possible-velocities;
+    say "Part 1: the maximum reachable height is ", $probe.max-height;
+    say "Part 2: the number of working velocity values is ", +$probe.working-velocities;
+}
