@@ -84,11 +84,12 @@ class Probe
             # If the target happens to be above you, choose 0 as the minimum.
             my $min-vy = 0 min $!target-y.min;
 
-            # TODO
-            # We need an upper bound for the vertical speed, but I can't figure out
-            # how - in the example, why does 6,vy with vy > 9 never hit the target??
-            # For now, pick an upper bound that seems safe enough.
-            my $max-vy = 500;
+            # With initial vertical speed vy > 0, the vertical position will
+            # go from 0 to +vy, and eventually from +vy to 0 to -vy-1.
+            # The highest absolute y coordinate in the target area is
+            # therefore an upper limit; with higher speeds you miss the target
+            # area completely.
+            my $max-vy = $!target-y.bounds».abs.max;
 
             VY:
             for $min-vy .. $max-vy -> $vy {
