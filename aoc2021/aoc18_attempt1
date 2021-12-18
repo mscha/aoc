@@ -1,0 +1,90 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 18 -- https://adventofcode.com/2021/day/18
+
+class SFNPart
+{
+    method magnitude { ... }
+    method Str { ... }
+    method gist { ... }
+}
+
+class SFNDigit is SFNPart
+{
+    has Int $.digit is required;
+
+    method magnitude { $!digit }
+    method Str { ~$!digit }
+    method gist { ~$!digit }
+}
+
+sub digit(Int $digit) { SFNDigit.new(:$digit) }
+
+class SFNumber is SFNPart
+{
+    has SFNPart $.left is required;
+    has SFNPart $.right is required;
+
+    method magnitude { $!left.magnitude + $!right.magnitude }
+    method Str { "[$!left,$!right]" }
+    method gist { "[$!left,$!right]" }
+
+    method plus(SFNumber $b)
+    {
+        my $sum = SFNumber.new(:left(self), :right($b));
+        $sum.reduce;
+        return $sum;
+    }
+
+    method reduce
+    {
+        loop {
+            next if self.explode;
+            next if self.split;
+            last;
+        }
+    }
+
+    method explode { ???  }
+
+    method split { ???  }
+}
+
+multi sub number(Int $left, Int $right)
+{
+    return number(digit($left), digit($right));
+}
+
+multi sub number(SFNPart $left, SFNPart $right)
+{
+    return SFNumber.new(:$left, :$right);
+}
+
+multi sub infix:<+>(SFNumber $a, SFNumber $b) { $a.plus($b) }
+
+grammar SFNFormat
+{
+    rule TOP { <number> }
+
+    rule number { '['<part>','<part>']' }
+    rule part { <number> | <digit> }
+    token digit { \d }
+}
+
+multi sub number(Str $str) {
+    return digit($str.Int) if $str ~~ /^\d$/;
+
+    SFNFormat.parse($str);
+    my ($left, $right) = $<number><part>.map(*.Str.&number);
+    return SFNumber.new(:$left, :$right);
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc18.input', Bool :v(:$verbose) = False)
+{
+    my @nums = $inputfile.lines».&number;
+    my $sum = [+] @nums;
+    say $sum if $verbose;
+    say "Part one: ", $sum.magnitude;
+}
