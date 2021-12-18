@@ -61,7 +61,7 @@ class SFNumber
 
         # Increase the number after the pair, if found
         if $after {
-            $!str.substr-rw($after.from..$after.to-1) = $after + $b;
+            $!str.substr-rw($after.from..^$after.to) = $after + $b;
         }
 
         # Replace the pair with just 0
@@ -69,7 +69,7 @@ class SFNumber
 
         # Increase the number before the pair, if found
         if $before {
-            $!str.substr-rw($before.from..$before.to-1) = $before + $a;
+            $!str.substr-rw($before.from..^$before.to) = $before + $a;
         }
 
         return True;
@@ -88,7 +88,7 @@ class SFNumber
         my $b = +$num - $a;
 
         # Replace the number with the pair
-        $!str.substr-rw($num.from..$num.to-1) = "[$a,$b]";
+        $!str.substr-rw($num.from..^$num.to) = "[$a,$b]";
 
         return True;
     }
