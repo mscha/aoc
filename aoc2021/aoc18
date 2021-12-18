@@ -100,7 +100,6 @@ class SFNumber
         my $a = $left<digit> ?? +$left<digit> !! sfnum($left).magnitude;
         my $b = $right<digit> ?? +$right<digit> !! sfnum($right).magnitude;
         return 3×$a + 2×$b;
-
     }
 
     method Str { $!str }
@@ -127,5 +126,4 @@ sub MAIN(IO() $inputfile where *.f = 'aoc18.input', Bool :v(:$verbose) = False)
         say "$_: ", $_.magnitude for @sums;
     }
     say "Part 2: ", @sums.tail.magnitude;
-
 }
