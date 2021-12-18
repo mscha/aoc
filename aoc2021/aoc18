@@ -1,0 +1,131 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 18 -- https://adventofcode.com/2021/day/18
+
+grammar SFNFormat
+{
+    rule TOP { <number> }
+
+    rule number { '['<part>','<part>']' }
+    rule part { <number> | <digit> }
+    token digit { \d }
+}
+
+class SFNumber
+{
+    has Str $.str;
+
+    method plus(SFNumber $b)
+    {
+        my $sum = SFNumber.new(:str("[$!str,$b]"));
+        $sum.reduce;
+        return $sum;
+    }
+
+    method reduce
+    {
+        loop {
+            next if self.explode;
+            next if self.split;
+            last;
+        }
+    }
+
+    method explode
+    {
+        # Find the position of the first pair at depth 4, if any
+        my $pos = -1;
+        my $depth = -1;
+        for $!str.comb.kv -> $i, $c {
+            $depth++ if $c eq '[';
+            $depth-- if $c eq ']';
+            if $c eq '[' && $depth == 4 {
+                $pos = $i;
+                last;
+            }
+        }
+
+        # Not found?  Nothing to do
+        return False unless $pos ≥ 0;
+
+        # Find the pair
+        my $pos1 = $!str.index(']', $pos+1);
+        my ($a, $b) = $!str.substr($pos..$pos1).comb(/\d+/);
+
+        # Find the numbers right before and after this pair
+        my @nums = $!str.match(/\d+/, :g);
+        my $before = @nums.first(*.to ≤ $pos, :end);
+        my $after = @nums.first(*.from > $pos1);
+
+        # Increase the number after the pair, if found
+        if $after {
+            $!str.substr-rw($after.from..$after.to-1) = $after + $b;
+        }
+
+        # Replace the pair with just 0
+        $!str.substr-rw($pos..$pos1) = '0';
+
+        # Increase the number before the pair, if found
+        if $before {
+            $!str.substr-rw($before.from..$before.to-1) = $before + $a;
+        }
+
+        return True;
+    }
+
+    method split
+    {
+        # Find the first multi-digit number
+        my $num = $!str.match(/\d\d+/);
+
+        # Nothing to do if not found
+        return False unless $num;
+
+        # Split it in two
+        my $a = +$num div 2;
+        my $b = +$num - $a;
+
+        # Replace the number with the pair
+        $!str.substr-rw($num.from..$num.to-1) = "[$a,$b]";
+
+        return True;
+    }
+
+    method magnitude
+    {
+        SFNFormat.parse($!str);
+        my ($left, $right) = $<number><part>;
+        my $a = $left<digit> ?? +$left<digit> !! sfnum($left).magnitude;
+        my $b = $right<digit> ?? +$right<digit> !! sfnum($right).magnitude;
+        return 3×$a + 2×$b;
+
+    }
+
+    method Str { $!str }
+    method gist { $!str }
+}
+
+sub sfnum(Str() $str) { SFNumber.new(:$str) }
+
+multi sub infix:<+>(SFNumber $a, SFNumber $b) { $a.plus($b) }
+
+
+sub MAIN(IO() $inputfile where *.f = 'aoc18.input', Bool :v(:$verbose) = False)
+{
+    my @nums = $inputfile.lines».&sfnum;
+
+    my $sum = [+] @nums;
+    say $sum if $verbose;
+    say "Part 1: ", $sum.magnitude;
+
+    my @sums = @nums.combinations(2)
+                    .map(-> ($a, $b) { slip $a+$b, $b+$a })
+                    .sort(*.magnitude);
+    if $verbose {
+        say "$_: ", $_.magnitude for @sums;
+    }
+    say "Part 2: ", @sums.tail.magnitude;
+
+}
