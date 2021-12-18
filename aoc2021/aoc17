@@ -75,7 +75,6 @@ class Probe
         my $max-vx = $!target-x.max;
         say "Maximum horizontal speed to reach the target: $max-vx" if $!verbose;
 
-        # Try horizontal speeds starting with the slowest
         VX:
         for $min-vx .. $max-vx -> $vx {
             # Inefficient lower bound for the vertical speed is the bottom of
