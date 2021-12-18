@@ -1,0 +1,226 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 18 -- https://adventofcode.com/2021/day/18
+
+class SFNPart
+{
+    method first-digit is rw { ... }
+    method last-digit is rw { ... }
+
+    method magnitude { ... }
+
+    method Str { ... }
+    method gist { ... }
+}
+
+class SFNDigit is SFNPart
+{
+    has Int $.value is rw is required;
+
+    has SFNDigit $.prev-digit is rw;
+    has SFNDigit $.next-digit is rw;
+
+    method first-digit is rw { self }
+    method last-digit is rw { self }
+
+    method magnitude { $!value }
+
+    method Str { ~$!value }
+    method gist { ~$!value }
+}
+
+sub digit(Int $value) { SFNDigit.new(:$value) }
+
+class SFNumber is SFNPart
+{
+    has SFNPart $.left is rw is required;
+    has SFNPart $.right is rw is required;
+
+    submethod TWEAK
+    {
+        self.connect-digits($!left.last-digit, $!right.first-digit);
+    }
+
+    method first-digit is rw { $!left.first-digit }
+    method last-digit is rw { $!right.last-digit }
+
+    method magnitude { 3×$!left.magnitude + 2×$!right.magnitude }
+
+    method Str { "[$!left,$!right]" }
+    method gist { "[$!left,$!right]" }
+
+    method plus(SFNumber $b)
+    {
+        # TODO - this re-parses the number, but the original:
+        #     my $sum = SFNumber.new(:left(self), :right($b))
+        # doesn't work since it doesn't make a deep copy
+        # of the structures, which are modified when reducing.
+        # This causes part 2 to give the wrong answer.
+        my $sum = number("[{self},$b]");
+        $sum.reduce;
+        return $sum;
+    }
+
+    method reduce
+    {
+        loop {
+            next if self.explode;
+            next if self.split;
+            last;
+        }
+    }
+
+    method explode
+    {
+        # Find a sub-number with depth 3, if any
+        my $sub = self.find-depth(3);
+        return False unless $sub;
+
+        # Explode the left part if it's a number, otherwise the right
+        # part if it's a number, otherwise give up
+        my $expl := $sub.left ~~ SFNumber ?? $sub.left
+                 !! $sub.right ~~ SFNumber ?? $sub.right
+                 !! Nil;
+        return False unless $expl;
+
+        # Add the first digit of the pair to the previous digit
+        my $a = $expl.first-digit;
+        my $ap = $a.prev-digit;
+        $ap.value += $a.value if $ap;
+
+        # Add the second digit of the pair to the next digit
+        my $b = $expl.last-digit;
+        my $bn = $b.next-digit;
+        $bn.value += $b.value if $bn;
+
+        # Replace the pair with a 0,
+        # and fix the connections between the digits
+        $expl = digit(0);
+        self.connect-digits($ap, $expl);
+        self.connect-digits($expl, $bn);
+
+        return True;
+    }
+
+    method split
+    {
+        # Find a sub-number with a value ≥ 10
+        my $sub = self.find-high-value;
+        return False unless $sub;
+
+        # Split the left or right part?
+        my $split := $sub.left ~~ SFNDigit && $sub.left.value ≥ 10 ?? $sub.left
+                  !! $sub.right ~~ SFNDigit && $sub.right.value ≥ 10 ?? $sub.right
+                  !! Nil;
+        return False unless $split;
+
+        # Split the value in two and create a new number
+        my $a = $split.value div 2;
+        my $b = $split.value - $a;
+        my $new = number($a, $b);
+
+        # Fix the connections between the digits
+        self.connect-digits($split.prev-digit, $new.left);
+        self.connect-digits($new.right, $split.next-digit);
+
+        # Save the new number in its spot
+        $split = $new;
+
+        return True;
+    }
+
+    # Find a number with a certain depth, which has at least one part
+    # that is another number (not a simple digit)
+    method find-depth(Int $depth)
+    {
+        # It we're at the right depth, this is it - if either part
+        # is a number
+        if $depth == 0 {
+            return self if any($!left, $!right) ~~ SFNumber;
+            return Nil;
+        }
+
+        # Otherwise, search deeper, first left, then right
+        for $!left, $!right -> $p {
+            if $p ~~ SFNumber && my $p1 = $p.find-depth($depth-1) {
+                return $p1;
+            }
+        }
+
+        return Nil;
+    }
+
+    # Find the first value 10 or higher in any component of the number
+    method find-high-value
+    {
+        # First check the left half, then the right
+        for $!left, $!right -> $p {
+            # Is this a digit with value ≥ 10?
+            if $p ~~ SFNDigit && $p.value ≥ 10 {
+                return self;
+            }
+            # Is this a number, with a value ≥ 10 in any component?
+            if $p ~~ SFNumber && my $p1 = $p.find-high-value {
+                return $p1;
+            }
+        }
+
+        return Nil;
+    }
+
+    # Remember that two digits a and b are connected
+    method connect-digits(SFNDigit $a, SFNDigit $b)
+    {
+        $a.next-digit = $b if $a;
+        $b.prev-digit = $a if $b;
+    }
+}
+
+grammar SFNFormat
+{
+    rule TOP { <number> }
+
+    rule number { '['<part>','<part>']' }
+    rule part { <number> | <digit> }
+    token digit { \d }
+}
+
+multi sub number(Str $str) {
+    return digit($str.Int) if $str ~~ /^\d$/;
+
+    SFNFormat.parse($str);
+    my ($left, $right) = $<number><part>.map(*.Str.&number);
+    return SFNumber.new(:$left, :$right);
+}
+
+multi sub number(Int $left, Int $right)
+{
+    return number(digit($left), digit($right));
+}
+
+multi sub number(SFNPart $left, SFNPart $right)
+{
+    return SFNumber.new(:$left, :$right);
+}
+
+multi sub infix:<+>(SFNumber $a, SFNumber $b) { $a.plus($b) }
+
+
+sub MAIN(IO() $inputfile where *.f = 'aoc18.input', Bool :v(:$verbose) = False)
+{
+    my @nums = $inputfile.lines».&number;
+
+    my $sum = [+] @nums;
+    say $sum if $verbose;
+    say "Part 1: ", $sum.magnitude;
+
+    my @sums = @nums.combinations(2)
+                    .map(-> ($a, $b) { slip $a+$b, $b+$a })
+                    .sort(*.magnitude);
+    if $verbose {
+        say "$_: ", $_.magnitude for @sums;
+    }
+    say "Part 2: ", @sums.tail.magnitude;
+}
