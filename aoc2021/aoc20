@@ -88,13 +88,7 @@ class Image
         # Ensure we have at least one layer of background pixels around the image
         self.expand;
 
-        # This should work, but doesn't - I get lots of Nil / uninitialized
-        # warnings, and completely incorrect answers - no idea why.
-        #@!pixels = ($!height).map(-> $y {
-        #    [@!enhance-rules[(^$!width).map(-> $x { self.square-value($x, $y) })]]
-        #});
-
-        # Instead, do it the long way round
+        # Enhance! the pixels
         @!pixels = do for ^$!height -> $y {
             [@!enhance-rules[(^$!width).map(-> $x { self.square-value($x, $y) })]];
         }
