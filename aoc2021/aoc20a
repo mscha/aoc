@@ -1,0 +1,126 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+#use Grammar::Tracer;
+
+# Advent of Code 2021 day 20 -- https://adventofcode.com/2021/day/20
+
+grammar ImageSpec
+{
+    rule TOP { <enhancement> <image> }
+
+    rule enhancement { <pixel>+ }
+    rule image { <row>+ }
+    rule row { <pixel>+ }
+
+    token pixel { <light> | <dark> }
+    token light { '#' }
+    token dark { '.' }
+}
+
+class Image
+{
+    constant LIGHT = '░';
+    constant DARK = '█';
+    constant %MAP = '#' => LIGHT, '.' => DARK;
+    constant %VALUE = (DARK) => 0, (LIGHT) => 1;
+
+    has Str $.spec is required;
+
+    has @.enhance-rules;
+    has @.pixels;
+    has Int $!height;
+    has Int $!width;
+    has $.background = DARK;
+
+    submethod TWEAK
+    {
+        ImageSpec.parse($!spec, :actions(self)) or die "Invalid image spec!";
+        $!height = @!pixels.elems;
+        $!width = @!pixels[0].elems;
+    }
+
+    # ImageSpec grammar action
+    method enhancement($/)
+    {
+        @!enhance-rules = $<pixel>.map({ %MAP{$_} });
+    }
+
+    # ImageSpec grammar action
+    method row($/)
+    {
+        @!pixels.push($<pixel>.map({ $_<light> ?? LIGHT !! DARK }).Array);
+    }
+
+    # Add a layer of background pixels around the image
+    method expand
+    {
+        for @!pixels -> @row {
+            @row.unshift($!background);
+            @row.push($!background);
+        }
+        $!width += 2;
+        @!pixels.unshift([ $!background xx $!width ]);
+        @!pixels.push([ $!background xx $!width ]);
+        $!height += 2;
+    }
+
+    # Value at (x,y), even for x and y outside the image
+    method pixel-value(Int $x, Int $y)
+    {
+        return %VALUE{$!background} unless 0 ≤ $x < $!width && 0 ≤ $y < $!height;
+        return %VALUE{@!pixels[$y;$x]}
+    }
+
+    # Value of the 3×3 square around (x,y)
+    method square-value(Int $x, Int $y)
+    {
+        return ($y-1 .. $y+1 X $x-1 .. $x+1)
+                .map(-> ($y1,$x1) { self.pixel-value($x1, $y1) })
+                .join
+                .parse-base(2);
+    }
+
+    # Enhance!
+    method enhance
+    {
+        # Ensure we have at least one layer of background pixels around the image
+        self.expand;
+
+        # Enhance rows in parallel
+        @!pixels = hyper for ^$!height -> $y {
+            [@!enhance-rules[(^$!width).map(-> $x { self.square-value($x, $y) })]];
+        }
+
+        # Make sure the color of pixels out of frame is adjusted if necessary
+        $!background = @!enhance-rules[self.square-value(-2,-2)];
+    }
+
+    # Count the lit pixels
+    # Note: if the background is light, this is infinite!
+    method lit-pixels {
+        return $!background eq DARK ?? @!pixels[*;*].grep(LIGHT).elems !! ∞;
+    }
+
+    method Str { @!pixels».join.join("\n") }
+    method gist { self.Str }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc20.input', Bool :v(:$verbose) = False)
+{
+    my $img = Image.new(:spec($inputfile.slurp));
+    say $img, "\n" if $verbose;
+
+    for 1..2 {
+        $img.enhance;
+        say $img, "\n" if $verbose;
+    }
+    say "Part 1: after 2 enhancements, $img.lit-pixels() pixels are lit.";
+
+    for 3..50 {
+        $img.enhance;
+        say $img, "\n" if $verbose;
+    }
+    say "Part 2: after 50 enhancements, $img.lit-pixels() pixels are lit.";
+}
