@@ -95,11 +95,9 @@ class Image
         #});
 
         # Instead, do it the long way round
-        my @p;
-        for ^$!height -> $y {
-            @p.push: [@!enhance-rules[(^$!width).map(-> $x { self.square-value($x, $y) })]];
+        @!pixels = do for ^$!height -> $y {
+            [@!enhance-rules[(^$!width).map(-> $x { self.square-value($x, $y) })]];
         }
-        @!pixels = @p;
 
         # Make sure the color of pixels out of frame is adjusted if necessary
         $!background = @!enhance-rules[self.square-value(-2,-2)];
