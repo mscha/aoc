@@ -102,8 +102,7 @@ class Image
         @!pixels = @p;
 
         # Make sure the color of pixels out of frame is adjusted if necessary
-        $!background = $!background eq DARK ?? @!enhance-rules.head
-                                            !! @!enhance-rules.tail;
+        $!background = @!enhance-rules[self.square-value(-2,-2)];
     }
 
     # Count the lit pixels
