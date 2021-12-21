@@ -13,7 +13,7 @@ class DeterministicDie
     multi method roll(Int $n where * > 0) { self.roll xx $n }
 }
 
-class DiracDice
+class DiracDice1
 {
     has Int @.start-pos is required;
     has Bool $.verbose = False;
@@ -25,7 +25,7 @@ class DiracDice
     has Int $.winning-score = 1000;
 
     has DeterministicDie $.die = DeterministicDie.new(:sides($!die-sides));
-    has Int $.total-rolls = 0;
+    has Int $.total-turns = 0;
     has Int @.pos = 0, |@!start-pos;    # Add dummy 0 for easier indexing
     has Int @.score = 0 xx @!pos;
 
@@ -37,7 +37,7 @@ class DiracDice
         loop {
             for 1..@!start-pos -> $p {
                 my @rolls = $!die.roll($!rolls);
-                $!total-rolls += $!rolls;
+                $!total-turns += $!rolls;
                 @!pos[$p] = ((@!pos[$p] + @rolls.sum - 1) % $!spaces) + 1;
                 @!score[$p] += @!pos[$p];
                 say "Player $p rolls @rolls.join('+') and moves to ",
@@ -52,10 +52,83 @@ class DiracDice
     }
 }
 
+class DiracDice2
+{
+    has Int @.start-pos is required;
+    has Bool $.verbose = False;
+
+    has Int $.num-players = @!start-pos.elems;
+    has Int $.spaces = 10;
+    has Int $.rolls = 3;
+    has Int $.die-sides = 3;
+    has Int $.winning-score = 21;
+
+    has Bag $.die-rolls = bag ([X] (1..$!die-sides) xx $!rolls)».sum;
+
+    has Int $.total-turns = 0;
+    has Int %.state-count = @!start-pos.join(',') ~ ';'
+                          ~ (0 xx $!num-players).join(',') => 1;
+    has Int @.win-count = 0 xx $!num-players;
+
+    sub split-state($state)
+    {
+        my (@pos, @score) := $state.split(';')».split(',')».Array;
+        return @pos, @score;
+    }
+
+    sub join-state(@pos, @score)
+    {
+        return (@pos, @score)».join(',').join(';')
+    }
+
+    method play
+    {
+        TURN:
+        loop {
+            for ^$!num-players -> $p {
+                my Int %new-count;
+                for %!state-count.kv -> $state, $n {
+                    my (@pos, @score) := split-state($state);
+                    for $.die-rolls.kv -> $rolls, $m {
+                        temp @pos; temp @score;
+                        @pos[$p] = (@pos[$p] + $rolls - 1) % 10 + 1;
+                        @score[$p] += @pos[$p];
+                        if @score[$p] ≥ $!winning-score {
+                            @!win-count[$p] += $n × $m;
+                        }
+                        else {
+                            %new-count{join-state(@pos, @score)} += $n × $m;
+                        }
+                    }
+                    %!state-count = %new-count;
+                }
+
+                $!total-turns++;
+                say "After turn $!total-turns, there are ",
+                    %!state-count.values.sum, " universes playing (",
+                    %!state-count.elems, " unique), and ",
+                    @!win-count.sum, ' are finished.' if $!verbose;
+                last TURN if %!state-count.elems == 0;
+            }
+        }
+
+        for ^$!num-players -> $p {
+            say "Player {$p+1}: @!win-count[$p] wins." if $!verbose;
+            say "The multiverse winner is: player ",
+                @!win-count.pairs.max(*.value).key + 1 if $!verbose;
+        }
+    }
+}
+
 sub MAIN(IO() $inputfile where *.f = 'aoc21.input', Bool :v(:$verbose) = False)
 {
     my @start-pos = $inputfile.comb(/\d+/)[1,3]».Int;
-    my $game = DiracDice.new(:@start-pos, :$verbose);
-    my $winner = $game.play();
-    say "Part 1: ", $game.score[3-$winner] × $game.total-rolls;
+
+    my $game1 = DiracDice1.new(:@start-pos, :$verbose);
+    my $winner1 = $game1.play();
+    say "Part 1: ", $game1.score[3-$winner1] × $game1.total-turns;
+
+    my $game2 = DiracDice2.new(:@start-pos, :$verbose);
+    $game2.play;
+    say "Part 2: ", $game2.win-count.max;
 }
