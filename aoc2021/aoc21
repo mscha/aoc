@@ -1,0 +1,61 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 21 -- https://adventofcode.com/2021/day/21
+
+class DeterministicDie
+{
+    has Int $.sides is required;
+    has Int $.next = 1;
+
+    multi method roll() { $!next++ }
+    multi method roll(Int $n where * > 0) { self.roll xx $n }
+}
+
+class DiracDice
+{
+    has Int @.start-pos is required;
+    has Bool $.verbose = False;
+
+    has Int $.num-players = @!start-pos.elems;
+    has Int $.spaces = 10;
+    has Int $.rolls = 3;
+    has Int $.die-sides = 1000;
+    has Int $.winning-score = 1000;
+
+    has DeterministicDie $.die = DeterministicDie.new(:sides($!die-sides));
+    has Int $.total-rolls = 0;
+    has Int @.pos = 0, |@!start-pos;    # Add dummy 0 for easier indexing
+    has Int @.score = 0 xx @!pos;
+
+    method play
+    {
+        for 1..$!num-players -> $p {
+            say "Player $p starting position: @!start-pos[$p-1]" if $!verbose;
+        }
+        loop {
+            for 1..@!start-pos -> $p {
+                my @rolls = $!die.roll($!rolls);
+                $!total-rolls += $!rolls;
+                @!pos[$p] = ((@!pos[$p] + @rolls.sum - 1) % $!spaces) + 1;
+                @!score[$p] += @!pos[$p];
+                say "Player $p rolls @rolls.join('+') and moves to ",
+                    "space @!pos[$p] for a total score of @!score[$p]"
+                            if $!verbose;
+                if @!score[$p] ≥ $!winning-score {
+                    say "Player $p wins!" if $!verbose;
+                    return $p;
+                }
+            }
+        }
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc21.input', Bool :v(:$verbose) = False)
+{
+    my @start-pos = $inputfile.comb(/\d+/)[1,3]».Int;
+    my $game = DiracDice.new(:@start-pos, :$verbose);
+    my $winner = $game.play();
+    say "Part 1: ", $game.score[3-$winner] × $game.total-rolls;
+}
