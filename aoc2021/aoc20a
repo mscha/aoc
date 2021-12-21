@@ -50,7 +50,7 @@ class Image
     # ImageSpec grammar action
     method row($/)
     {
-        @!pixels.push($<pixel>.map({ $_<light> ?? LIGHT !! DARK }).Array);
+        @!pixels.push: [$<pixel>.map({ $_<light> ?? LIGHT !! DARK })];
     }
 
     # Add a layer of background pixels around the image
@@ -61,6 +61,7 @@ class Image
             @row.push($!background);
         }
         $!width += 2;
+
         @!pixels.unshift([ $!background xx $!width ]);
         @!pixels.push([ $!background xx $!width ]);
         $!height += 2;
@@ -88,7 +89,7 @@ class Image
         # Ensure we have at least one layer of background pixels around the image
         self.expand;
 
-        # Enhance rows in parallel
+        # Enhance! rows in parallel
         @!pixels = hyper for ^$!height -> $y {
             [@!enhance-rules[(^$!width).map(-> $x { self.square-value($x, $y) })]];
         }

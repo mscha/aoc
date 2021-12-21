@@ -50,7 +50,7 @@ class Image
     # ImageSpec grammar action
     method row($/)
     {
-        @!pixels.push($<pixel>.map({ $_<light> ?? LIGHT !! DARK }).Array);
+        @!pixels.push: [$<pixel>.map({ $_<light> ?? LIGHT !! DARK })];
     }
 
     # Add a layer of background pixels around the image
@@ -61,6 +61,7 @@ class Image
             @row.push($!background);
         }
         $!width += 2;
+
         @!pixels.unshift([ $!background xx $!width ]);
         @!pixels.push([ $!background xx $!width ]);
         $!height += 2;
