@@ -6,7 +6,7 @@ $*OUT.out-buffer = False;   # Autoflush
 
 sub MAIN(IO() $inputfile where *.f = 'aoc01.input', Bool :v(:$verbose) = False)
 {
-    my @cal-counts = $inputfile.split(/\r?\n\r?\n/)».words».sum;
+    my @cal-counts = $inputfile.split(/\n\n/)».words».sum;
     dd @cal-counts if $verbose;
     say "Part 1: ", @cal-counts.max;
     say "Part 2: ", @cal-counts.sort(-*).head(3).sum;
