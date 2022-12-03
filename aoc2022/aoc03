@@ -7,7 +7,7 @@ $*OUT.out-buffer = False;   # Autoflush
 multi sub priority(Str $item)
 {
     given $item {
-        return $item.ord - 96 when 'a'..'z';
+        return $item.ord - 96 when 'a' .. 'z';
         return $item.ord - 38 when 'A' .. 'Z';
     }
 }
