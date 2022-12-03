@@ -25,9 +25,6 @@ class Rucksack
         my $half = $!item-count div 2;
         return slip keys @!items.head($half) ∩ @!items.tail($half);
     }
-
-    method Str { "{$!item-list}" }
-    method gist { self.Str }
 }
 
 sub common-items(@sacks)
