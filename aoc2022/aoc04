@@ -16,13 +16,13 @@ class ElfPair
         ($!start1, $!end1, $!start2, $!end2) = $!assignment.comb(/\d+/);
     }
 
-    method containing
+    method is-containing
     {
         return $!start1 ≤ $!start2 ≤ $!end2 ≤ $!end1 ||
                $!start2 ≤ $!start1 ≤ $!end1 ≤ $!end2;
     }
 
-    method overlapping
+    method is-overlapping
     {
         return $!start1 ≤ $!start2 ≤ $!end1 ||
                $!start1 ≤ $!end2 ≤ $!end1 ||
@@ -33,6 +33,6 @@ class ElfPair
 sub MAIN(IO() $inputfile where *.f = 'aoc04.input')
 {
     my @pairs = $inputfile.lines.map: { ElfPair.new(:assignment($_)) };
-    say "Part 1: ", @pairs».containing.sum;
-    say "Part 2: ", @pairs».overlapping.sum;
+    say "Part 1: ", @pairs».is-containing.sum;
+    say "Part 2: ", @pairs».is-overlapping.sum;
 }
