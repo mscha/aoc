@@ -7,7 +7,7 @@ $*OUT.out-buffer = False;   # Autoflush
 sub packet-start(Str $stream, Int :$length = 4)
 {
     return $/.pos if $stream ~~ /
-                . ** {$length}                      # Any _length_ characters
+                . ** {$length}                      # Any $length characters
                 <?{ $/.comb.unique == $length }>    # where all are unique
             /;
     return -1;  # if none found
