@@ -24,7 +24,7 @@ class TreeGrid
 
     method count-visible
     {
-        return ((0..$!max-x) X (0..$!max-y))
+        return (0..$!max-x X 0..$!max-y)
                     .map(-> ($x,$y) { ?self.is-visible($x,$y) })
                     .sum;
     }
@@ -46,7 +46,7 @@ class TreeGrid
 
     method max-scenic-score
     {
-        return ((0^..^$!max-x) X (0^..^$!max-y))
+        return (0^..^$!max-x X 0^..^$!max-y)
                     .map(-> ($x,$y) { self.scenic-score($x,$y) })
                     .max;
     }
