@@ -8,9 +8,9 @@ class TreeGrid
 {
     has Str $.map;
 
-    has @.height = $!map.lines.map(*.comb».Int);
-    has Int $.max-x = @!height[0].end;
-    has Int $.max-y = @!height.end;
+    has @!height = $!map.lines.map(*.comb».Int);
+    has Int $!max-x = @!height[0].end;
+    has Int $!max-y = @!height.end;
 
     method in-bounds(Int $x, Int $y) { 0 ≤ $x ≤ $!max-x && 0 ≤ $y ≤ $!max-y }
 
