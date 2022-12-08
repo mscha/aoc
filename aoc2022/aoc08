@@ -16,10 +16,10 @@ class TreeGrid
 
     method is-visible(Int $x, Int $y)
     {
-        return all(@!height[$y;^$x]) < @!height[$y;$x] ||
-               all(@!height[$y;$x^..$!max-x]) < @!height[$y;$x] ||
-               all(@!height[^$y;$x]) < @!height[$y;$x] ||
-               all(@!height[$y^..$!max-y;$x]) < @!height[$y;$x];
+        return any(all(@!height[$y;^$x]),
+                   all(@!height[$y;$x^..$!max-x]),
+                   all(@!height[^$y;$x]),
+                   all(@!height[$y^..$!max-y;$x])) < @!height[$y;$x];
     }
 
     method count-visible
