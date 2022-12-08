@@ -35,7 +35,7 @@ class TreeGrid
             my $visible = 0;
             my ($u,$v) = ($x,$y);
             loop {
-                ($u,$v) «+=» ($dx,$dy);
+                ($u,$v) »+=« ($dx,$dy);
                 last unless self.in-bounds($u,$v);
                 $visible++;
                 last if @!height[$v;$u] ≥ @!height[$y;$x];
