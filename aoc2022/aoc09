@@ -36,7 +36,7 @@ $*OUT.out-buffer = False;   # Autoflush
         {
             if abs(@!pos[$t] - @!pos[$h]) > 1.5 {
                 @!pos[$t] += sign(@!pos[$h].re - @!pos[$t].re)
-                            + sign(@!pos[$h].im - @!pos[$t].im) × i;
+                           + sign(@!pos[$h].im - @!pos[$t].im) × i;
                 say "    Knot $t moves to @!pos[$t]" if $!verbose;
 
                 %!tail-visits{@!pos[$t]}++ if $t == $!knots - 1;
