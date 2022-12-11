@@ -30,18 +30,18 @@ class MonkeyBarrel { ... }
 
 class Monkey
 {
-    has Int $.id;
-    has Int @.items;
-    has Str @.terms;
-    has Sub $.operation;
-    has Int $.div-by;
-    has Int $.true-monkey;
-    has Int $.false-monkey;
+    has Int $.id;               # ID
+    has Int @.items;            # Worry levels of items
+    has Str @.terms;            # Terms used in the new level calculation (number or 'old')
+    has Sub $.operation;        # Operation used in the new level calculation (+ or *)
+    has Int $.div-by;           # Number used in "divisibly by" check
+    has Int $.true-monkey;      # Monkey to throw to if divisible
+    has Int $.false-monkey;     # Monkey to throw to if not divisible
 
-    has MonkeyBarrel $.barrel;
-    has Bool $.relief = True;
-    has Int $.modulo is rw;
-    has Bool $.verbose = False;
+    has MonkeyBarrel $.barrel;  # Our monkey barrel
+    has Bool $.relief = True;   # Are we relieved that our item did not break?
+    has Int $.modulo is rw;     # Keep worry levels modulo this, if set
+    has Bool $.verbose = False; # Verbose output
 
     has Int $.inspect-count = 0;
 
@@ -49,14 +49,20 @@ class Monkey
     method play
     {
         for @!items -> $i {
+            # Calculate new worry level
             my $level = self.new-level($i);
-            $level div= 3 if $!relief;
-            $level %= $!modulo if $!modulo;
-            my $new = $level %% $!div-by ?? $!true-monkey !! $!false-monkey;
-            say "Monkey $!id: $i => $level; to monkey $new" if $!verbose;
-            $!barrel.monkeys[$new].items.append($level);
+            $level div= 3 if $!relief;      # Divide by 3 if we're relieved
+            $level %= $!modulo if $!modulo; # Use modulo calculation if provided
+
+            # Throw the item to the correct monkey
+            my $new-monkey = $level %% $!div-by ?? $!true-monkey !! $!false-monkey;
+            say "Monkey $!id: $i => $level; to monkey $new-monkey" if $!verbose;
+            $!barrel.monkeys[$new-monkey].items.append($level);
+
             $!inspect-count++;
         }
+
+        # We have no items left
         @!items = ();
     }
 
@@ -72,12 +78,12 @@ class Monkey
 
 class MonkeyBarrel
 {
-    has Str $.monkey-list;
-    has Bool $.relief = True;
-    has Bool $.verbose = False;
+    has Str $.monkey-list;      # Specification of monkeys
+    has Bool $.relief = True;   # Are we relieved that our item did not break?
+    has Bool $.verbose = False; # Verbose output
 
-    has Monkey @.monkeys;
-    has Int $.round = 0;
+    has Monkey @.monkeys;       # Monkeys in the barrel
+    has Int $.round = 0;        # Number of rounds played (only used in verbose output)
 
     constant %OPER = '+' => &infix:<+>, '*' => &infix:<*>;
 
@@ -91,7 +97,7 @@ class MonkeyBarrel
         # Determine the smallest modulo we can use
         if (!$!relief) {
             my $modulo = [lcm] @!monkeys».div-by;
-            $_.modulo = $modulo for @!monkeys;
+            .modulo = $modulo for @!monkeys;
             say "Worry levels are modulo $modulo" if $!verbose;
         }
     }
