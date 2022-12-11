@@ -124,9 +124,7 @@ class MonkeyBarrel
     {
         $!round++;
         @!monkeys».play;
-        if $!verbose {
-            say "After round $!round: $_" for @!monkeys;
-        }
+        say "After round $!round: $_" if $!verbose for @!monkeys;
     }
 
     # Calculate the level of monkey business
