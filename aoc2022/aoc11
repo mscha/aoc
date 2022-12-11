@@ -1,0 +1,140 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2022 day 11 -- https://adventofcode.com/2022/day/11
+
+grammar MonkeyList
+{
+    rule TOP { ^ <monkey-spec>+ $ }
+
+    rule monkey-spec {
+        'Monkey' <id>':'
+          'Starting items:' <level>+ % ','
+          'Operation: new = ' <term> <oper> <term>
+          'Test: divisible by' <div-by>
+            'If true: throw to monkey' <true-monkey>
+            'If false: throw to monkey' <false-monkey>
+    }
+
+    token id { \d+ }
+    token level { \d+ }
+    token term { \d+ | 'old' }
+    token oper { '+' | '*' }
+    token div-by { \d+ }
+    token true-monkey { \d+ }
+    token false-monkey { \d+ }
+}
+
+class MonkeyBarrel { ... }
+
+class Monkey
+{
+    has Int $.id;
+    has Int @.items;
+    has Str @.terms;
+    has Sub $.operation;
+    has Int $.div-by;
+    has Int $.true-monkey;
+    has Int $.false-monkey;
+
+    has MonkeyBarrel $.barrel;
+    has Bool $.relief = True;
+    has Int $.modulo is rw;
+    has Bool $.verbose = False;
+
+    has Int $.inspect-count = 0;
+
+    # Play a turn of Keep Away
+    method play
+    {
+        for @!items -> $i {
+            my $level = self.new-level($i);
+            $level div= 3 if $!relief;
+            $level %= $!modulo if $!modulo;
+            my $new = $level %% $!div-by ?? $!true-monkey !! $!false-monkey;
+            say "Monkey $!id: $i => $level; to monkey $new" if $!verbose;
+            $!barrel.monkeys[$new].items.append($level);
+            $!inspect-count++;
+        }
+        @!items = ();
+    }
+
+    # Determine a new worry level
+    method new-level(Int $old)
+    {
+        return self.operation.(|@!terms.map({ $^t eq 'old' ?? $old !! +$^t }));
+    }
+
+    method Str { "Monkey $!id: @!items.join(', '); $!inspect-count inspections." }
+    method gist { self.Str }
+}
+
+class MonkeyBarrel
+{
+    has Str $.monkey-list;
+    has Bool $.relief = True;
+    has Bool $.verbose = False;
+
+    has Monkey @.monkeys;
+    has Int $.round = 0;
+
+    constant %OPER = '+' => &infix:<+>, '*' => &infix:<*>;
+
+    submethod TWEAK
+    {
+        # Parse the list of monkeys
+        MonkeyList.parse($!monkey-list, :actions(self));
+
+        # Worry levels are getting too big if we don't get relief,
+        # so we have to use worry levels modulo something.
+        # Determine the smallest modulo we can use
+        if (!$!relief) {
+            my $modulo = [lcm] @!monkeys».div-by;
+            $_.modulo = $modulo for @!monkeys;
+            say "Worry levels are modulo $modulo" if $!verbose;
+        }
+    }
+
+    # Store a parsed monkey
+    method monkey-spec($/)
+    {
+        my $monkey = Monkey.new(:id(+$<id>),
+                                :items(@<level>».Int),
+                                :terms(@<term>».Str),
+                                :operation(%OPER{$<oper>}),
+                                :div-by(+$<div-by>),
+                                :true-monkey(+$<true-monkey>),
+                                :false-monkey(+$<false-monkey>),
+                                :barrel(self),
+                                :$!relief,
+                                :$!verbose);
+        @!monkeys[$<id>] = $monkey;
+        say "Init: $monkey" if $!verbose;
+    }
+
+    # Play a round of Keep Away
+    method play-round
+    {
+        $!round++;
+        @!monkeys».play;
+        if $!verbose {
+            say "After round $!round: $_" for @!monkeys;
+        }
+    }
+
+    # Calculate the level of monkey business
+    method monkey-business { [*] @!monkeys».inspect-count.sort.tail(2) }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc11.input', Bool :v(:$verbose) = False)
+{
+    my $barrel = MonkeyBarrel.new(:monkey-list($inputfile.slurp), :$verbose);
+    $barrel.play-round for ^20;
+    say 'Part 1: ', $barrel.monkey-business;
+
+    # Don't pass $verbose for part 2, it's too much output
+    $barrel = MonkeyBarrel.new(:monkey-list($inputfile.slurp), :!relief);
+    $barrel.play-round for ^10_000;
+    say 'Part 2: ', $barrel.monkey-business;
+}
