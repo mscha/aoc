@@ -90,7 +90,7 @@ class MonkeyBarrel
     submethod TWEAK
     {
         # Parse the list of monkeys
-        MonkeyList.parse($!monkey-list, :actions(self));
+        MonkeyList.parse($!monkey-list, :actions(self)) or die "Invalid specification!";
 
         # Worry levels are getting too big if we don't get relief,
         # so we have to use worry levels modulo something.
