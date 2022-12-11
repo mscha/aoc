@@ -85,8 +85,6 @@ class MonkeyBarrel
     has Monkey @.monkeys;       # Monkeys in the barrel
     has Int $.round = 0;        # Number of rounds played (only used in verbose output)
 
-    constant %OPER = '+' => &infix:<+>, '*' => &infix:<*>;
-
     submethod TWEAK
     {
         # Parse the list of monkeys
@@ -108,7 +106,7 @@ class MonkeyBarrel
         my $monkey = Monkey.new(:id(+$<id>),
                                 :items(@<level>».Int),
                                 :terms(@<term>».Str),
-                                :operation(%OPER{$<oper>}),
+                                :operation(qq:!f/&infix:«$<oper>»/.EVAL),
                                 :div-by(+$<div-by>),
                                 :true-monkey(+$<true-monkey>),
                                 :false-monkey(+$<false-monkey>),
