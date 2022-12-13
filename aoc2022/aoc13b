@@ -25,7 +25,7 @@ sub compare($p, $q, Bool :v(:$verbose) = False)
         # Compare each item until we find one that's different
         # If all items are the same, compare the lengths of the lists
         $cmp = ($p[] Z $q[]).map(-> ($l, $r) { compare($l, $r, :$verbose) })
-                            .first(?*)
+                            .first(* ≠ Same)
                     || $p.elems <=> $q.elems;
     }
 
