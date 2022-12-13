@@ -36,15 +36,10 @@ multi sub compare($p, $q, Bool :v(:$verbose) = False)
         # Comparing two lists
         # (or one list and an integer, we can treat the integer as a list)
         # Compare each item until we find one that's different
-        for $p[] Z $q[] -> ($l, $r) {
-            my $icmp = compare($l, $r, :$verbose);
-            unless $icmp eq Same {
-                $cmp = $icmp;
-                last;
-            }
-        }
         # If all items are the same, compare the lengths of the lists
-        $cmp ||= $p.elems <=> $q.elems;
+        $cmp = ($p[] Z $q[]).map(-> ($l, $r) { compare($l, $r, :$verbose) })
+                            .first(?*)
+                    || $p.elems <=> $q.elems;
     }
 
     say '  ' x $level, $p, ' vs ', $q, ': ', $cmp if $verbose;
