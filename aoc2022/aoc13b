@@ -32,16 +32,9 @@ multi sub compare($p, $q, Bool :v(:$verbose) = False)
         # Comparing two integers
         $cmp = $p <=> $q;
     }
-    elsif ($p ~~ Int) {
-        # Comparing an integer and a list - convert integer to list
-        $cmp = compare([$p], $q, :$verbose);
-    }
-    elsif ($q ~~ Int) {
-        # Comparing a list and an integer - convert integer to list
-        $cmp = compare($p, [$q], :$verbose);
-    }
     else {
         # Comparing two lists
+        # (or one list and an integer, we can treat the integer as a list)
         # Compare each item until we find one that's different
         for $p[] Z $q[] -> ($l, $r) {
             my $icmp = compare($l, $r, :$verbose);
