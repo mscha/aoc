@@ -8,20 +8,7 @@ $*OUT.out-buffer = False;   # Autoflush
 
 use JSON::Fast;
 
-class Packet
-{
-    has Str $.spec;
-    has $.data = from-json($!spec);
-}
-
-sub packet(Str $spec) { Packet.new(:$spec) }
-
-multi sub compare(Packet $p, Packet $q, Bool :v(:$verbose) = False)
-{
-    return compare($p.data, $q.data, :$verbose);
-}
-
-multi sub compare($p, $q, Bool :v(:$verbose) = False)
+sub compare($p, $q, Bool :v(:$verbose) = False)
 {
     state $level = -1;
     temp $level; $level++;
@@ -49,14 +36,14 @@ multi sub compare($p, $q, Bool :v(:$verbose) = False)
 
 sub MAIN(IO() $inputfile where *.f = 'aoc13.input', Bool :v(:$verbose) = False)
 {
-    my @packets = $inputfile.lines.grep(/\S/)».&packet;
+    my @packets = $inputfile.lines.grep(/\S/)».&from-json;
     say 'Part 1: ', @packets.rotor(2)
                             .grep(-> ($p,$q) { compare($p,$q, :$verbose) eq Less }, :k)
                             .map(* + 1)    # Using 1-based indexing, sigh
                             .sum;
 
-    my $dividers = set '[[2]]', '[[6]]';
-    @packets.append(packet($_)) for $dividers.keys;
+    my @dividers = ('[[2]]', '[[6]]')».&from-json;
+    @packets.append(@dividers);
     @packets .= sort(&compare);
-    say "Part 2: ", [×] @packets.grep(*.spec ∈ $dividers, :k).map(* + 1);
+    say "Part 2: ", [×] @packets.grep(* ∈ @dividers, :k).map(* + 1);
 }
