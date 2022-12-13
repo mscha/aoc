@@ -33,13 +33,13 @@ multi sub compare($p, $q, Bool :v(:$verbose) = False)
         $cmp = $p <=> $q;
     }
     else {
-            # Comparing two lists
-            # (or one list and an integer, we can treat the integer as a list)
-            # Compare each item until we find one that's different
-            # If all items are the same, compare the lengths of the lists
-            $cmp = ($p[] Z $q[]).map(-> ($l, $r) { compare($l, $r, :$verbose) })
-                                .first(?*)
-                        || $p.elems <=> $q.elems;
+        # Comparing two lists
+        # (or one list and an integer, we can treat the integer as a list)
+        # Compare each item until we find one that's different
+        # If all items are the same, compare the lengths of the lists
+        $cmp = ($p[] Z $q[]).map(-> ($l, $r) { compare($l, $r, :$verbose) })
+                            .first(?*)
+                    || $p.elems <=> $q.elems;
     }
 
     say '  ' x $level, $p, ' vs ', $q, ': ', $cmp if $verbose;
