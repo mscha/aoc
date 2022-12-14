@@ -11,14 +11,18 @@ class Position
     has Int $.x;
     has Int $.y;
 
+    # Position is a value type
     method WHICH() { ValueObjAt.new("Position|$!x|$!y") }   # Value type
 
+    # Stringification
     method Str { "($!x,$!y)" }
     method gist { self.Str }
 
+    # Ranges - only purely horizontal or vertical are supported
     multi method to(Position $end where $end.x == $!x) { ($!y ... $end.y).map({ pos($!x, $^y) }) }
     multi method to(Position $end where $end.y == $!y) { ($!x ... $end.x).map({ pos($^x, $!y) }) }
 
+    # Moving downwards
     method S { pos($!x, $!y+1) }
     method SW { pos($!x-1, $!y+1) }
     method SE { pos($!x+1, $!y+1) }
@@ -26,6 +30,8 @@ class Position
 }
 
 sub pos(Int() $x, Int() $y) { Position.new(:$x, :$y) }
+
+# Override $p == $q and $p .. $q
 multi sub infix:<==>(Position $a, Position $b) { $a.x == $b.x && $a.y == $b.y }
 multi sub infix:<..>(Position $a, Position $b) { $a.to($b) }
 
@@ -46,15 +52,12 @@ class Cave
     constant SOURCE = '+';
     constant SAND = 'o';
 
-    submethod TWEAK
-    {
-        @!grid[$!source.y;$!source.x] = SOURCE;
-    }
+    submethod TWEAK { self.set($!source, SOURCE) }
 
     method at(Position $p)
     {
         return WALL if $p.y ≥ $!floor-level;    # Floor is equivalent to wall
-        return @!grid[$p.y;$p.x] // BLANK;      # Points outside known grid are blank
+        return @!grid[$p.y;$p.x] // BLANK;      # Un-set points are blank
     }
 
     multi method set(Position $p, Str $val)
