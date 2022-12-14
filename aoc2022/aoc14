@@ -35,6 +35,13 @@ sub pos(Int() $x, Int() $y) { Position.new(:$x, :$y) }
 multi sub infix:<==>(Position $a, Position $b) { $a.x == $b.x && $a.y == $b.y }
 multi sub infix:<..>(Position $a, Position $b) { $a.to($b) }
 
+constant BLANK = '░';
+constant WALL = '▓';
+constant SOURCE = '+';
+constant SAND = 'o';
+
+subset Char of Str where *.chars == 1;
+
 class Cave
 {
     has Position $.source = pos(500,0);     # Source of sand
@@ -43,27 +50,20 @@ class Cave
     has Int $.sand-dropped = 0;             # Number of units of sand dropped
     has Bool $.overflow = False;            # Has overflow happened?
 
-    has @!grid;
+    has Char %!grid{Position} is default(BLANK) = $!source => SOURCE;
     has Position $!min = $!source;
     has Position $!max = $!source;
-
-    constant BLANK = '░';
-    constant WALL = '▓';
-    constant SOURCE = '+';
-    constant SAND = 'o';
-
-    submethod TWEAK { self.set($!source, SOURCE) }
 
     method at(Position $p)
     {
         return WALL if $p.y ≥ $!floor-level;    # Floor is equivalent to wall
-        return @!grid[$p.y;$p.x] // BLANK;      # Un-set points are blank
+        return %!grid{$p};
     }
 
-    multi method set(Position $p, Str $val)
+    multi method set(Position $p, Char $val)
     {
         # Store the value in the right position in the grid
-        @!grid[$p.y;$p.x] = $val;
+        %!grid{$p} = $val;
 
         # Extend the boundaries of the grid, if necessary
         if $p.x > $!max.x || $p.y > $!max.y {
@@ -75,7 +75,7 @@ class Cave
     }
     multi method set(@p, $val) { self.set($_, $val) for @p }
 
-    method draw-path(Str $path, Str $val = WALL)
+    method draw-path(Str $path, Char $val = WALL)
     {
         # Draw a line for each segment in the path
         for $path.comb(/\d+/).rotor(4 => -2) -> ($x1,$y1, $x2,$y2) {
