@@ -97,11 +97,16 @@ class Cave
 
     method drop-sand
     {
-        my $p = $!source;
+        # Keep track of the path of the sand.  The next unit of sand will
+        # follow at least all but one of these drops.
+        state @path;
+        my $p = @path.pop // $!source;
+
         DROP:
         loop {
             # Drop to the first downward position that is available
             if my $q = $p.downwards.first({ self.at($^q) eq BLANK }) {
+                @path.push($p);
                 $p = $q;
             }
             else {
