@@ -31,15 +31,15 @@ multi sub infix:<..>(Position $a, Position $b) { $a.to($b) }
 
 class Cave
 {
-    has Position $.source = pos(500,0);
-    has Int $.floor-level = 1_000_000;  # Basically infinite
+    has Position $.source = pos(500,0);     # Source of sand
+    has Int $.floor-level = 1_000_000;      # Default: basically infinite
 
-    has @.grid;
-    has Position $.min = $!source;
-    has Position $.max = $!source;
+    has Int $.sand-dropped = 0;             # Number of units of sand dropped
+    has Bool $.overflow = False;            # Has overflow happened?
 
-    has Int $.sand-dropped = 0;
-    has Bool $.overflow = False;
+    has @!grid;
+    has Position $!min = $!source;
+    has Position $!max = $!source;
 
     constant BLANK = '░';
     constant WALL = '▓';
@@ -53,13 +53,16 @@ class Cave
 
     method at(Position $p)
     {
-        return WALL if $p.y ≥ $!floor-level;
-        return @!grid[$p.y;$p.x] // BLANK;
+        return WALL if $p.y ≥ $!floor-level;    # Floor is equivalent to wall
+        return @!grid[$p.y;$p.x] // BLANK;      # Points outside known grid are blank
     }
 
     multi method set(Position $p, Str $val)
     {
+        # Store the value in the right position in the grid
         @!grid[$p.y;$p.x] = $val;
+
+        # Extend the boundaries of the grid, if necessary
         if $p.x > $!max.x || $p.y > $!max.y {
             $!max = pos(max($!max.x, $p.x), max($!max.y, $p.y));
         }
@@ -69,20 +72,23 @@ class Cave
     }
     multi method set(@p, $val) { self.set($_, $val) for @p }
 
-    method draw-path(Str $path)
+    method draw-path(Str $path, Str $val = WALL)
     {
-        my $p0;
-        for $path.comb(/\d+/) -> $x, $y {
-            my $p = pos($x,$y);
-            self.set($p0 .. $p, WALL) if $p0;
-            $p0 = $p;
+        # Draw a line for each segment in the path
+        for $path.comb(/\d+/).rotor(4 => -2) -> ($x1,$y1, $x2,$y2) {
+            self.set(pos($x1,$y1) .. pos($x2,$y2), $val);
         }
     }
 
     method set-floor-level(Int $delta)
     {
+        # Set floor level
         $!floor-level = $!max.y + $delta;
+
+        # We can't drop to floor level or below
         $!max = pos($!max.x, $!floor-level - 1);
+
+        # Reset the overflow flag
         $!overflow = False;
     }
 
