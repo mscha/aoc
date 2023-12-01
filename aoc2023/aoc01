@@ -1,0 +1,30 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 1 -- https://adventofcode.com/2023/day/1
+
+sub digitValue($d)
+{
+    constant %value = :one(1), :two(2), :three(3), :four(4), :five(5),
+                      :six(6), :seven(7), :eight(8), :nine(9);
+    return %value{$d} // +$d;
+}
+
+sub calibration-value($line)
+{
+    constant @digits = <0 1 2 3 4 5 6 7 8 9
+                        one two three four five six seven eight nine>;
+    
+    my @d = $line.match(/@digits/, :overlap);
+    return 10 × digitValue(@d.head) + digitValue(@d.tail);
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc01.input')
+{
+    say "Part 1: the sum of all of the calibration values is: ",
+        $inputfile.lines».comb(/\d/).map(-> @d { @d.head ~ @d.tail }).sum;
+
+    say "Part 2: the sum of all of the calibration values is: ",
+        $inputfile.lines.map(&calibration-value).sum;
+}
