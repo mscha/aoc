@@ -1,0 +1,43 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 2 -- https://adventofcode.com/2023/day/2
+
+grammar CubeGameSpec
+{
+    rule TOP { 'Game' <game-id>':' <color-specs>+ % ';' }
+    rule color-specs { <color-spec>+ % ',' }
+    rule color-spec { <count> <color> }
+    token game-id { \d+ }
+    token count { \d+ }
+    token color { 'red' | 'green' | 'blue' }
+}
+
+class CubeGame
+{
+    has Str $.spec;
+    has Int $.id;
+    has %.min-count = :0red, :0green, :0blue;
+
+    submethod TWEAK { CubeGameSpec.parse($!spec, :actions(self)) }
+
+    # Parsing methods
+    method game-id($/) { $!id = +$/ }
+    method color-spec($/) { %!min-count{~$<color>} max= +$<count> }
+
+    method is-possible(Int :$red, Int :$green, Int :$blue)
+    {
+        %!min-count<red> ≤ $red && %!min-count<green> ≤ $green && %!min-count<blue> ≤ $blue;
+    }
+
+    method power { [×] %.min-count.values }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc02.input')
+{
+    my @games = $inputfile.lines.map({ CubeGame.new(:spec($_)) });
+
+    say "Part 1: ", @games.grep(*.is-possible(:12red, :13green, :14blue))».id.sum;
+    say "Part 2: ", @games».power.sum;
+}
