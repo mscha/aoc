@@ -4,6 +4,28 @@ $*OUT.out-buffer = False;   # Autoflush
 
 # Advent of Code 2023 day 5 -- https://adventofcode.com/2023/day/5
 
+# Return the parts of a range r1 that are left of,
+# overlapping with, and right of a range r2
+sub overlay(Range $r1, Range $r2)
+{
+    my $left = $r1.min < $r2.min
+            ?? $r1.min .. min($r1.max, $r2.min - 1)
+            !! Nil;
+    my $overlap = $r1.min ≤ $r2.max && $r2.min ≤ $r1.max
+            ?? max($r1.min, $r2.min) .. min($r1.max, $r2.max)
+            !! Nil;
+    my $right = $r1.max > $r2.max
+            ?? max($r1.min, $r2.max + 1) .. $r1.max
+            !! Nil;
+
+    return $left, $overlap, $right;
+}
+
+# An entry in a mapping table with a source, destination and length.
+# Allows mapping of a single integer or a range of integers.
+# In the latter case it returns (up to) three ranges: an unmapped range left
+# of this entry's domain, a mapped range within the domain, and an unmapped
+# range right of the domain.
 class MappingEntry
 {
     has Int $.src;
@@ -11,14 +33,23 @@ class MappingEntry
     has Int $.len;
 
     has Int $.src-max = $!src + $!len - 1;
+    has Range $!src-range = $!src .. $!src-max;
 
     multi method in-range(Int $id) { $!src ≤ $id ≤ $!src-max }
     multi method in-range(Range $r) { $r.min ≤ $!src-max && $r.max ≥ $!src }
 
     multi method map(Int $id) { $id - $!src + $!dst }
-    multi method map(Range $r) { self.map($r.min) .. self.map($r.max) }
+    multi method map(Range $r)
+    {
+        my ($left, $overlap, $right) = overlay($r, $!src-range);
+        return $left, self.map($overlap.min) .. self.map($overlap.max), $right;
+    }
 }
 
+# A mapping table with multiple entries.
+# Allows mapping of a single integer or a range of integers.
+# In the latter case it may return multiple ranges, ones that have been mapped
+# by an entry, and unmapped ones that didn't match any entry.
 class Mapping
 {
     has Str $.from;
@@ -42,28 +73,25 @@ class Mapping
         return $id;
     }
 
-    multi method map(Range $r is copy)
+    multi method map(Range $r)
     {
+        my $remaining = $r;
         gather {
             for @!entries -> $e {
-                next unless $e.in-range($r);
+                next unless $e.in-range($remaining);
 
-                if $r.min < $e.src {
-                    take $r.min .. $e.src - 1;
-                    $r = $e.src .. $r.max;
-                }
-
-                my $max = min($r.max, $e.src-max);
-                take $e.map($r.min .. $max);
-                $r = $max+1 .. $r.max;
-                last if $r.min > $r.max;
-
+                my ($left, $middle, $right) = $e.map($remaining);
+                take $left if $left;
+                take $middle if $middle;
+                $remaining = $right;
+                last unless $remaining;
             }
-            take $r unless $r.min > $r.max;
+            take $remaining if $remaining;
         }
     }
 }
 
+# Grammar to parse the almanac
 grammar AlmanacSpec
 {
     rule TOP { <seed-list> <mapping>+ }
@@ -80,6 +108,8 @@ grammar AlmanacSpec
     token len { \d+ }
 }
 
+# Almanac class.
+# Allows mapping between various types of resources.
 class Almanac
 {
     has Str $.spec;
@@ -94,11 +124,13 @@ class Almanac
     {
         AlmanacSpec.parse($!spec, :actions(self));
         if $!use-ranges {
+            # The provided seed IDs are actually ranges with start and length
             for @!seeds -> $s, $len {
                 @!seed-ranges.push($s .. $s+$len-1);
             }
         }
         else {
+            # Single seed IDs are provided, convert them to (trivial) ranges
             for @!seeds -> $s {
                 @!seed-ranges.push($s .. $s);
             }
@@ -118,6 +150,8 @@ class Almanac
         %!map{$from} = $m;
     }
 
+    # Convert a range of IDs from one type of resource to another,
+    # using one or more mapping tables
     method convert(Str $from, Str $to, *@ranges)
     {
         my $curr = $from;
