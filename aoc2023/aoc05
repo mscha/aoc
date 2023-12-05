@@ -1,0 +1,147 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 5 -- https://adventofcode.com/2023/day/5
+
+class MappingEntry
+{
+    has Int $.src;
+    has Int $.dst;
+    has Int $.len;
+
+    has Int $.src-max = $!src + $!len - 1;
+
+    multi method in-range(Int $id) { $!src ≤ $id ≤ $!src-max }
+    multi method in-range(Range $r) { $r.min ≤ $!src-max && $r.max ≥ $!src }
+
+    multi method map(Int $id) { $id - $!src + $!dst }
+    multi method map(Range $r) { self.map($r.min) .. self.map($r.max) }
+}
+
+class Mapping
+{
+    has Str $.from;
+    has Str $.to;
+
+    has MappingEntry @.entries;
+
+    method add-entry(Int() $src, Int() $dst, Int() $len)
+    {
+        @!entries.push: MappingEntry.new(:$src, :$dst, :$len);
+        @!entries .= sort(*.src);
+    }
+
+    multi method map(Int $id)
+    {
+        for @!entries -> $e {
+            return $e.map($id) if $e.in-range($id);
+        }
+
+        # No mapping, return unchanged
+        return $id;
+    }
+
+    multi method map(Range $r is copy)
+    {
+        gather {
+            for @!entries -> $e {
+                next unless $e.in-range($r);
+
+                if $r.min < $e.src {
+                    take $r.min .. $e.src - 1;
+                    $r = $e.src .. $r.max;
+                }
+
+                my $max = min($r.max, $e.src-max);
+                take $e.map($r.min .. $max);
+                $r = $max+1 .. $r.max;
+                last if $r.min > $r.max;
+
+            }
+            take $r unless $r.min > $r.max;
+        }
+    }
+}
+
+grammar AlmanacSpec
+{
+    rule TOP { <seed-list> <mapping>+ }
+
+    rule seed-list { 'seeds:' <seed>+ % \s+ }
+    rule mapping { <map-from>'-to-'<map-to> 'map:' <map-entry>+ }
+    rule map-entry { <dst> <src> <len> }
+
+    token seed { \d+ }
+    token map-from { \w+ }
+    token map-to { \w+ }
+    token dst { \d+ }
+    token src { \d+ }
+    token len { \d+ }
+}
+
+class Almanac
+{
+    has Str $.spec;
+    has Bool $.use-ranges = False;
+    has Bool $.verbose = False;
+
+    has Int @.seeds;
+    has Range @.seed-ranges;
+    has %.map;
+
+    submethod TWEAK
+    {
+        AlmanacSpec.parse($!spec, :actions(self));
+        if $!use-ranges {
+            for @!seeds -> $s, $len {
+                @!seed-ranges.push($s .. $s+$len-1);
+            }
+        }
+        else {
+            for @!seeds -> $s {
+                @!seed-ranges.push($s .. $s);
+            }
+        }
+    }
+
+    # Grammar action methods
+    method seed($/) { @!seeds.push(+$/) }
+    method mapping($/)
+    {
+        my $from = ~$<map-from>;
+        my $to = ~$<map-to>;
+        my $m = Mapping.new(:$from, :$to);
+        for $<map-entry> -> $e {
+            $m.add-entry($e<src>, $e<dst>, $e<len>);
+        }
+        %!map{$from} = $m;
+    }
+
+    method convert(Str $from, Str $to, *@ranges)
+    {
+        my $curr = $from;
+        my @currRanges = @ranges;
+        say "[$curr: ", @currRanges, ']' if $!verbose;
+        while $curr ne $to {
+            my $m = %!map{$curr};
+            @currRanges .= map(-> $r { slip $m.map($r) });
+            $curr = $m.to;
+            say "[$curr: ", @currRanges, ']' if $!verbose;
+        }
+
+        return @currRanges;
+    }
+
+    method location-ranges { self.convert('seed', 'location', @!seed-ranges) }
+    method min-location { self.location-ranges».min.min };
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc05.input', Bool :v(:$verbose) = False)
+{
+    my $alm = Almanac.new(:spec($inputfile.slurp), :$verbose);
+    say 'Part 1: ', $alm.min-location;
+
+    my $alm2 = Almanac.new(:spec($inputfile.slurp), :use-ranges, :$verbose);
+    say 'Part 2: ', $alm2.min-location;
+}
