@@ -157,6 +157,8 @@ class Almanac
         my $curr = $from;
         my @currRanges = @ranges;
         say "[$curr: ", @currRanges, ']' if $!verbose;
+
+        # Keep mapping resources until we have the requested one
         while $curr ne $to {
             my $m = %!map{$curr};
             @currRanges .= map(-> $r { slip $m.map($r) });
