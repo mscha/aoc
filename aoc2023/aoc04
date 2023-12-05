@@ -1,0 +1,57 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 4 -- https://adventofcode.com/2023/day/4
+
+grammar ScratchSpec
+{
+    rule TOP { 'Card' <card-no>':' <winning>+ % \s+ '|' <number>+ % \s+ }
+
+    token card-no { \d+ }
+    token winning { \d+ }
+    token number { \d+ }
+}
+
+class ScratchCard
+{
+    has Str $.spec;
+
+    has Int $.no;
+    has @.winning-numbers;
+    has @.chosen-numbers;
+
+    # Grammar action methods
+    method card-no($/) { $!no = +$/ }
+    method winning($/) { @!winning-numbers.push(+$/) }
+    method number($/) { @!chosen-numbers.push(+$/) }
+
+    submethod TWEAK { ScratchSpec.parse($!spec, :actions(self)) }
+
+    method match-count
+    {
+        return @!chosen-numbers.sort.unique.grep(* == any(@!winning-numbers)).elems;
+    }
+
+    method points
+    {
+        my $count = self.match-count;
+        return 0 unless $count;
+        return 2 ** ($count - 1);
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc04.input')
+{
+    my @cards = $inputfile.lines.map(-> $spec { ScratchCard.new(:$spec) });
+    say 'Part 1: ', @cards».points.sum;
+
+    my @card-count = 1 xx @cards;
+    for @cards.kv -> $i, $c {
+        for 1 .. $c.match-count -> $j {
+            last if $i+$j > @cards.end;
+            @card-count[$i+$j] += @card-count[$i];
+        }
+    }
+    say 'Part 2: ', @card-count.sum;
+}
