@@ -6,7 +6,7 @@ $*OUT.out-buffer = False;   # Autoflush
 
 grammar ScratchSpec
 {
-    rule TOP { 'Card' <card-no>':' <winning>+ % \s+ '|' <number>+ % \s+ }
+    rule TOP { 'Card' <card-no>':' <winning>+ % <.ws> '|' <number>+ % <.ws> }
 
     token card-no { \d+ }
     token winning { \d+ }
