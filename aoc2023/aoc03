@@ -1,0 +1,72 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 3 -- https://adventofcode.com/2023/day/3
+
+class Part
+{
+    has Int $.part-number;
+    has Int $.x0;
+    has Int $.x1;
+    has Int $.y;
+}
+
+class Symbol
+{
+    has Str $.sym;
+    has Int $.x;
+    has Int $.y;
+
+    has Int $.gear-ratio is rw = 0;
+}
+
+# Adjacent operator: $a ⇆ $b
+multi sub infix:<⇆>(Part $p, Symbol $s) { $p.x0 - 1 ≤ $s.x ≤ $p.x1 + 1 && $p.y - 1 ≤ $s.y ≤ $p.y + 1 }
+multi sub infix:<⇆>(Symbol $s, Part $p) { $p.x0 - 1 ≤ $s.x ≤ $p.x1 + 1 && $p.y - 1 ≤ $s.y ≤ $p.y + 1 }
+
+class Schematic
+{
+    has Str $.map;
+
+    has Part @.parts;
+    has Symbol @.symbols;
+    
+    submethod TWEAK
+    {
+        # Find symbols
+        for $!map.lines.kv -> $y, $l {
+            for $l.match(/<-[.0..9]>/, :g) -> $s {
+                @!symbols.push(Symbol.new(:sym(~$s), :x($s.from), :$y));
+            }
+        }
+
+        # Find parts
+        for $!map.lines.kv -> $y, $l {
+            # Part numbers
+            for $l.match(/\d+/, :g) -> $p {
+                my $part = Part.new(:part-number(+$p), :x0($p.from), :x1($p.to - 1), :$y);
+
+                # Must be adjacent to a symbol to be included
+                next unless $part ⇆ any(@!symbols);
+                @!parts.push($part);
+            }
+        }
+
+        # Calculate gear ratio for any gears.
+        # A gear is any * symbol that is adjacent to exactly two part numbers.
+        for @!symbols.grep(*.sym eq '*') -> $s {
+            my @nparts = @!parts.grep(* ⇆ $s);
+            if @nparts.elems == 2 {
+                $s.gear-ratio = [×] @nparts».part-number;
+            }
+        }
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc03.input')
+{
+    my $schematic = Schematic.new(:map($inputfile.slurp));
+    say "Part 1: ", $schematic.parts».part-number.sum;
+    say "Part 2: ", $schematic.symbols».gear-ratio.sum;
+}
