@@ -4,7 +4,7 @@ $*OUT.out-buffer = False;   # Autoflush
 
 # Advent of Code 2023 day 6 -- https://adventofcode.com/2023/day/6
 
-sub num-wins($time, $dist)
+sub num-wins(Int $time, Int $dist)
 {
     # We need to find the number of integer values t between 0 and time
     # for which t × (time - t) > dist.
