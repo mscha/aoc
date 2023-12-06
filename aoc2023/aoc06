@@ -7,17 +7,17 @@ $*OUT.out-buffer = False;   # Autoflush
 sub num-wins(Int $time, Int $dist)
 {
     # We need to find the number of integer values t between 0 and time
-    # for which t × (time - t) > dist.
-    # First solve t × (time - t) = dist, or t² - time × t + dist = 0
+    # for which t·(time-t) > dist.
+    # First solve x·(time-x) = dist, or x² - time·x + dist = 0
     my $det = $time² - 4×$dist;
     return 0 if $det < 0;   # No real solutions if determinant negative
-    my $s1 = ($time - sqrt($det))/2;
-    my $s2 = ($time + sqrt($det))/2;
+    my $x1 = ($time - sqrt($det))/2;
+    my $x2 = ($time + sqrt($det))/2;
 
     # Now find the number of integers that are *strictly* between these
     # solutions (since we need to *break* the record to win)
-    my $t1 = floor($s1) + 1;
-    my $t2 = ceiling($s2) - 1;
+    my $t1 = floor($x1) + 1;
+    my $t2 = ceiling($x2) - 1;
     return $t2 - $t1 + 1;
 }
 
