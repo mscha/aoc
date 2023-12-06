@@ -18,7 +18,7 @@ sub num-wins(Int $time, Int $dist)
     # solutions (since we need to *break* the record to win)
     my $t1 = floor($x1) + 1;
     my $t2 = ceiling($x2) - 1;
-    return $t2 - $t1 + 1;
+    return ($t1..$t2).elems;
 }
 
 sub MAIN(IO() $inputfile where *.f = 'aoc06.input', Bool :v(:$verbose) = False)
