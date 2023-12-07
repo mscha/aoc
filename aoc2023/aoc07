@@ -15,9 +15,8 @@ class CamelHand
     has Int $.bid;
     has Bool $.jokers = False;
 
-    has Int @.values = $!cards.comb.map: -> $c {
-        $!jokers ?? %CARD-VALUE-JOKERS{$c} !! %CARD-VALUE{$c}
-    };
+    has Int @.values = $!jokers ?? %CARD-VALUE-JOKERS{$!cards.comb}
+                                !! %CARD-VALUE{$!cards.comb};
 
     has Int $.rank is rw;
     has Int $.winnings is rw;
