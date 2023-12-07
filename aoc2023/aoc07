@@ -6,8 +6,8 @@ $*OUT.out-buffer = False;   # Autoflush
 
 enum HandType <HighCard OnePair TwoPair ThreeOfAKind FullHouse FourOfAKind FiveOfAKind>;
 
-constant %CARD-VALUE = (2..9 Z=> 2..9), T=>10, J=>11, Q=>12, K=>13, A=>14;
-constant %CARD-VALUE-JOKERS = (2..9 Z=> 2..9), T=>10, J=>0, Q=>12, K=>13, A=>14;
+constant %CARD-VALUE        = (2..9 Z=> 2..9), T=>10, J=>11, Q=>12, K=>13, A=>14;
+constant %CARD-VALUE-JOKERS = (2..9 Z=> 2..9), T=>10, J=>0,  Q=>12, K=>13, A=>14;
 
 class CamelHand
 {
