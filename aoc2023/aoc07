@@ -7,7 +7,7 @@ $*OUT.out-buffer = False;   # Autoflush
 enum HandType <HighCard OnePair TwoPair ThreeOfAKind FullHouse FourOfAKind FiveOfAKind>;
 
 constant %CARD-VALUE = (2..9 Z=> 2..9), T=>10, J=>11, Q=>12, K=>13, A=>14;
-constant %CARD-VALUE-JOKERS = (2..9 Z=> 2..9), T=>10, J=>1, Q=>12, K=>13, A=>14;
+constant %CARD-VALUE-JOKERS = (2..9 Z=> 2..9), T=>10, J=>0, Q=>12, K=>13, A=>14;
 
 class CamelHand
 {
@@ -24,11 +24,11 @@ class CamelHand
 
     method type
     {
-        # Count the number of the same cards, ignoring jokers (with value 1)
-        my @count = @!values.grep(* ≠ 1).Bag.values.sort.reverse;
+        # Count the number of the same cards, ignoring jokers (with value 0)
+        my @count = @!values.grep(?*).Bag.values.sort.reverse;
 
         # Add the number of jokers to the most frequent card
-        @count[0] += @!values.grep(* == 1);
+        @count[0] += @!values.grep(!*);
 
         # Determine the type of hand based on this count
         given @count {
