@@ -1,0 +1,85 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 7 -- https://adventofcode.com/2023/day/7
+
+enum HandType <HighCard OnePair TwoPair ThreeOfAKind FullHouse FourOfAKind FiveOfAKind>;
+
+constant %CARD-VALUE = (2..9 Z=> 2..9), T=>10, J=>11, Q=>12, K=>13, A=>14;
+constant %CARD-VALUE-JOKERS = (2..9 Z=> 2..9), T=>10, J=>1, Q=>12, K=>13, A=>14;
+
+class CamelHand
+{
+    has Str $.cards;
+    has Int $.bid;
+    has Bool $.jokers = False;
+
+    has Int @.values = $!cards.comb.map: -> $c {
+        $!jokers ?? %CARD-VALUE-JOKERS{$c} !! %CARD-VALUE{$c}
+    };
+
+    has Int $.rank is rw;
+    has Int $.winnings is rw;
+
+    method type
+    {
+        # Count the number of the same cards, ignoring jokers (with value 1)
+        my @count = @!values.grep(* ≠ 1).Bag.values.sort.reverse;
+
+        # Add the number of jokers to the most frequent card
+        @count[0] += @!values.grep(* == 1);
+
+        # Determine the type of hand based on this count
+        given @count {
+            return FiveOfAKind when (5,);
+            return FourOfAKind when (4,1);
+            return FullHouse when (3,2);
+            return ThreeOfAKind when (3,1,1);
+            return TwoPair when (2,2,1);
+            return OnePair when (2,1,1,1);
+            return HighCard when (1,1,1,1,1);
+        }
+    }
+
+    method cmp(CamelHand $h)
+    {
+        # First, compare the type of hand.  If the same, compare the values
+        return self.type cmp $h.type || self.values cmp $h.values;
+    }
+}
+
+multi sub infix:<cmp>(CamelHand $h1, CamelHand $h2) { $h1.cmp($h2) }
+
+class CamelCards
+{
+    has Str $.bid-list;
+    has Bool $.jokers = False;
+
+    has CamelHand @.hands = $!bid-list.words.map: -> $c, $b {
+        CamelHand.new(:cards($c), :bid(+$b), :$!jokers)
+    }
+
+    method calc-winnings
+    {
+        for @!hands.sort(&infix:<cmp>).kv -> $i, $h {
+            $h.rank = $i+1;
+            $h.winnings = $h.rank × $h.bid;
+        }
+    }
+
+    method total-winnings
+    {
+        self.calc-winnings;
+        return @!hands».winnings.sum;
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc07.input')
+{
+    my $game1 = CamelCards.new(:bid-list($inputfile.slurp));
+    say 'Part 1: the total winnings are ', $game1.total-winnings;
+
+    my $game2 = CamelCards.new(:bid-list($inputfile.slurp), :jokers);
+    say 'Part 2: the total winnings are ', $game2.total-winnings;
+}
