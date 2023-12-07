@@ -50,7 +50,7 @@ class CamelCards
 
     submethod TWEAK
     {
-        for @!hands.sort(&infix:<cmp>).kv -> $i, $h {
+        for @!hands.sort(&[cmp]).kv -> $i, $h {
             $h.rank = $i+1;
             $h.winnings = $h.rank × $h.bid;
         }

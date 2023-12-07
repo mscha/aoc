@@ -61,7 +61,7 @@ class CamelCards
 
     method calc-winnings
     {
-        for @!hands.sort(&infix:<cmp>).kv -> $i, $h {
+        for @!hands.sort(&[cmp]).kv -> $i, $h {
             $h.rank = $i+1;
             $h.winnings = $h.rank × $h.bid;
         }
