@@ -21,7 +21,7 @@ sub num-wins(Int $time, Int $dist)
     return ($t1..$t2).elems;
 }
 
-sub MAIN(IO() $inputfile where *.f = 'aoc06.input', Bool :v(:$verbose) = False)
+sub MAIN(IO() $inputfile where *.f = 'aoc06.input')
 {
     my @lines = $inputfile.lines;
     my @times = @lines[0].comb(/\d+/)».Int;
