@@ -50,14 +50,14 @@ class DesertNetwork
                 $curr = %!transitions{$curr}{$move};
                 $steps++;
                 say "# $steps: $move → $curr" if $!verbose;
-                return $steps if $curr eq $to || ($ghost && ghost-equiv($curr, $to));
+                return $steps if $curr eq $to || ($ghost && $curr.&ghost-equiv($to));
             }
         }
     }
 
     method ghost-navigate(Str $from = 'AAA', Str $to = 'ZZZ')
     {
-        my @from = @!nodes.grep({ ghost-equiv($_, $from) });
+        my @from = @!nodes.grep(*.&ghost-equiv($from));
         return [lcm] @from.map({ self.navigate($_, $to, :ghost) });
     }
 
