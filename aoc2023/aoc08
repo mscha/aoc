@@ -1,0 +1,71 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 8 -- https://adventofcode.com/2023/day/8
+
+grammar DesertMap
+{
+    rule TOP { <instructions> <transition>+ }
+
+    token instructions { (L|R)+ }
+
+    rule transition { <node> '=' '(' <node> ',' <node> ')' }
+    token node { \w ** 3 }
+}
+
+class DesertNetwork
+{
+    has Str $.map;
+    has Bool $.verbose = False;
+
+    has Str @.moves;
+    has Str @.nodes;
+    has %.transitions;
+
+    submethod TWEAK { DesertMap.parse($!map, :actions(self)) }
+
+    # Map parsing methods
+    method instructions($/) { @!moves = $/.comb }
+    method transition($/) {
+        my ($node, $left, $right) = $<node>».Str;
+        @!nodes.push($node);
+        %!transitions{$node} = { :L($left), :R($right) };
+    }
+
+    sub ghost-equiv($a, $b) { $a.substr(*-1) eq $b.substr(*-1) }
+
+    method navigate(Str $from = 'AAA', Str $to = 'ZZZ', Bool :$ghost = False)
+    {
+        my $curr = $from;
+        my $steps = 0;
+        say "# $steps:     $curr" if $!verbose;
+        loop {
+            for @!moves -> $move {
+                if !%!transitions{$curr} {
+                    say "# Nowhere to go from $curr!" if $!verbose;
+                    return ∞;
+                }
+
+                $curr = %!transitions{$curr}{$move};
+                $steps++;
+                say "# $steps: $move → $curr" if $!verbose;
+                return $steps if $curr eq $to || ($ghost && ghost-equiv($curr, $to));
+            }
+        }
+    }
+
+    method ghost-navigate(Str $from = 'AAA', Str $to = 'ZZZ')
+    {
+        my @from = @!nodes.grep({ ghost-equiv($_, $from) });
+        return [lcm] @from.map({ self.navigate($_, $to, :ghost) });
+    }
+
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc08.input', Bool :v(:$verbose) = False)
+{
+    my $net = DesertNetwork.new(:map($inputfile.slurp), :$verbose);
+    say "Part 1: $net.navigate() moves";
+    say "Part 2: $net.ghost-navigate() ghostly moves";
+}
