@@ -1,0 +1,22 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 9 -- https://adventofcode.com/2023/day/9
+
+class Series
+{
+    has Int @.values;
+
+    sub next-value(@val) { all(@val) == 0 ?? 0 !! @val.tail + next-value(@val[1..*] Z- @val) }
+
+    method next { next-value(@!values) }
+    method prev { next-value(@!values.reverse) }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc09.input')
+{
+    my @series = $inputfile.lines».words».Int.map: -> @values { Series.new(:@values) };
+    say 'Part 1: the sum of the extrapolated values is ', @series».next.sum;
+    say 'Part 2: the sum of the backwards extrapolated values is ', @series».prev.sum;
+}
