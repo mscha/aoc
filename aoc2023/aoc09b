@@ -8,7 +8,7 @@ class Series
 {
     has Int @.values;
 
-    sub next-value(@val) { all(@val) == 0 ?? 0 !! @val.tail + next-value(@val[1..*] Z- @val) }
+    sub next-value(@val) { any(@val) ?? @val.tail + next-value(@val[1..*] Z- @val) !! 0 }
 
     method next { next-value(@!values) }
     method prev { next-value(@!values.reverse) }
