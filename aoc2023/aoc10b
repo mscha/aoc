@@ -111,7 +111,7 @@ class PipeMaze
     {
         # Use the shoelace formula to determine the area
         my $area = 0;
-        my $border = 1;
+        my $border = 0;
         my $p = $!start-pos;
         my $q = @.reachable($p).head;
         repeat {
@@ -122,7 +122,7 @@ class PipeMaze
 
         # We may have a negative area if we went anti-clockwise.
         # Also, compensate for overcounted partial border cells
-        return abs($area) - $border/2 + 1.5;
+        return abs($area) - $border/2 + 1;
     }
 
     # Stringification
