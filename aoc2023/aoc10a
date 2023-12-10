@@ -129,13 +129,16 @@ class PipeMaze
     }
 
     # Stringification
+    method char-at(Position $p)
+    {
+        $.at($p).trans('|-LJ7F.S' => $.in-loop($p) ?? '┃━┗┛┓┏░█' !! '│─└┘┐┌░█');
+    }
     method Str
     {
         my $str = '';
         for ^$!height -> $y {
             for ^$!width -> $x {
-                my $p = pos($x,$y);
-                $str ~= $.at($p).trans('|-LJ7F.S' => '│─└┘┐┌░╋');
+                $str ~= $.char-at(pos($x,$y));
             }
             $str ~= "\n";
         }
