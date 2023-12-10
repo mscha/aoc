@@ -54,7 +54,7 @@ class PipeMaze
     # Find the starting position
     method find-start-pos { $.all-pos.first(-> $p { $.at($p) eq 'S' }) }
 
-    # Find valid exists for the (possible) pipe at position p
+    # Find valid exits for the (possible) pipe at position p
     method pipe-exits-at($p)
     {
         constant %pipe-exits =
@@ -65,7 +65,6 @@ class PipeMaze
             '7' => set(south, west),
             'F' => set(south, east),
             '.' => set(),
-            '*' => set(),
             'S' => set(north, east, south, west);
         return %pipe-exits{$.at($p)}
     }
