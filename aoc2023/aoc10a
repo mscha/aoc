@@ -112,9 +112,8 @@ class PipeMaze
     {
         my $count = 0;
 
-        for @.all-pos -> $p {
-            next if $.in-loop($p);
-
+        # Loop through all positions that are not part of the loop itself.
+        for @.all-pos.grep({ !$.in-loop($_) }) -> $p {
             # Shoot a ray to the top of the grid, count the number of crossings.
             # If it's an odd number, we're on the inside.
             # (In case we're parallel to a pipe, assume we're just to the right
