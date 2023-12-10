@@ -1,0 +1,153 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 10 -- https://adventofcode.com/2023/day/10
+
+enum Direction <north east south west>;
+my Direction %reverse{Direction} = north,south, east,west, south,north, west,east;
+my Int %dx{Direction} = north, 0, east,1, south,0, west,-1;
+my Int %dy{Direction} = north,-1, east,0, south,1, west, 0;
+
+class Position
+{
+    has Int $.x;
+    has Int $.y;
+
+    method neighbour(Direction $dir) { pos($!x+%dx{$dir}, $!y+%dy{$dir}) }
+    method neighbours { Direction::.values.map: -> $dir { $.neighbour($dir) } }
+
+    method Str { "($!x,$!y)" }
+    method gist { self.Str }
+
+    method WHICH { ValueObjAt.new("Pos|$!x|$!y") }
+}
+sub pos(Int() $x, Int() $y) { Position.new(:$x, :$y) }
+
+class PipeMaze
+{
+    has Str $.map;
+    has Bool $.verbose = False;
+
+    has @.grid = $!map.lines».comb;
+    has Int $.height = @!grid.elems;
+    has Int $.width = @!grid[0].elems;
+
+    has Position $.start-pos = self.find-start-pos;
+
+    has Int %.distance{Position};
+
+    submethod TWEAK {
+        self.measure-distances;
+        say self if $!verbose;
+    }
+
+    # Is p a valid grid position?
+    method in-grid($p) { 0 ≤ $p.x < $!width && 0 ≤ $p.y < $!height }
+
+    # The contents of the maze at position p
+    method at(Position $p) { $.in-grid($p) ?? @!grid[$p.y;$p.x] !! '.' }
+
+    # All valid positions in the maze
+    method all-pos { (^$!width X ^$!height).map(-> ($x,$y) { pos($x,$y) }) }
+
+    # Find the starting position
+    method find-start-pos { $.all-pos.first(-> $p { $.at($p) eq 'S' }) }
+
+    # Find valid exists for the (possible) pipe at position p
+    method pipe-exits-at($p)
+    {
+        constant %pipe-exits =
+            '|' => set(north, south),
+            '-' => set(east, west),
+            'L' => set(north, east),
+            'J' => set(north, west),
+            '7' => set(south, west),
+            'F' => set(south, east),
+            '.' => set(),
+            '*' => set(),
+            'S' => set(north, east, south, west);
+        return %pipe-exits{$.at($p)}
+    }
+
+    # Find all positions q that are reachable via a pipe from position p
+    # (i.e. p and q have pipes that fit together)
+    method reachable(Position $p, Position :$exclude)
+    {
+        gather for Direction::.values -> $dir {
+            next unless $dir ∈ $.pipe-exits-at($p);
+            my $q = $p.neighbour($dir);
+            next unless %reverse{$dir} ∈ $.pipe-exits-at($q);
+            take $q unless defined($exclude) && $q eq $exclude;
+        }
+    }
+
+    # Measure all distances via pipes from the start position
+    method measure-distances
+    {
+        %!distance{$!start-pos} = 0;
+        my $dist = 0;
+        my @todo = $!start-pos;
+        while @todo {
+            $dist++;
+            my @next;
+            for @todo -> $p {
+                for @.reachable($p) -> $q {
+                    @next.append($q) unless %!distance{$q}:exists;
+                    %!distance{$q} min= $dist;
+                }
+            }
+            @todo = @next;
+        }
+    }
+
+    # The distance to the furthest reachable pipe
+    method max-distance { %!distance.values.max }
+
+    # Is position p in the loop of pipes?
+    method in-loop($p) { %!distance{$p}:exists }
+
+    # Count the cells inside the loop
+    method count-inside
+    {
+        my $count = 0;
+
+        for @.all-pos -> $p {
+            next if $.in-loop($p);
+
+            # Shoot a ray to the top of the grid, count the number of crossings.
+            # If it's an odd number, we're on the inside.
+            # (In case we're parallel to a pipe, assume we're just to the right
+            # of it, so only count crossings if the pipe goes off to the east.)
+            my $crossings = 0;
+            loop (my $q = $p; $.in-grid($q); $q .= neighbour(north)) {
+                $crossings++ if $.in-loop($q) && east ∈ $.pipe-exits-at($q);
+            }
+            $count++ if $crossings !%% 2;
+        }
+
+        return $count;
+    }
+
+    # Stringification
+    method Str
+    {
+        my $str = '';
+        for ^$!height -> $y {
+            for ^$!width -> $x {
+                my $p = pos($x,$y);
+                $str ~= $.at($p).trans('|-LJ7F.S' => '│─└┘┐┌░╋');
+            }
+            $str ~= "\n";
+        }
+        return $str;
+    }
+    method gist { self.Str }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc10.input', :v(:$verbose) = False)
+{
+    my $maze = PipeMaze.new(:map($inputfile.slurp), :$verbose);
+    say "Part one: the maximum distance is $maze.max-distance()";
+    say "Part two: the number of inside tiles is $maze.count-inside()";
+}
