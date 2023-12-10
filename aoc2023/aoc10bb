@@ -113,7 +113,7 @@ class PipeMaze
         my @loop = $!start-pos,
                    @.reachable($!start-pos).head,
                    -> $p, $q { @.reachable($q, :exclude($p)).head } ...
-                   -> $p, $q { $q eq $!start-pos };
+                   -> $, $q { $q eq $!start-pos };
         my $area = (@loop Z @loop[1..*])
                         .map(-> ($p,$q) { $p.x × $q.y - $p.y × $q.x })
                         .sum / 2;
