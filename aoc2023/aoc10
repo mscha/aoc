@@ -159,20 +159,20 @@ class PipeMaze
         }
     }
 
-# Count the cells inside the loop
-method count-inside
-{
-    # First, double up the map so that we can flood fill between lines
-    my $dmaze = PipeMaze.new(:map($.double-map), :$!verbose);
+    # Count the cells inside the loop
+    method count-inside
+    {
+        # First, double up the map so that we can flood fill between lines
+        my $dmaze = PipeMaze.new(:map($.double-map), :$!verbose);
 
-    # Do a flood fill on the double map, starting in the top left corner
-    $dmaze.flood-fill(pos(0,0));
-    say $dmaze if $!verbose;
+        # Do a flood fill on the double map, starting in the top left corner
+        $dmaze.flood-fill(pos(0,0));
+        say $dmaze if $!verbose;
 
-    # Now count all "blank" points (not part of the loop and not filled)
-    # with odd coordinates (i.e. from the original maze)
-    return $dmaze.blank-pos.grep(-> $p { $p.x !%% 2 && $p.y !%% 2 }).elems;
-}
+        # Now count all "blank" points (not part of the loop and not filled)
+        # with odd coordinates (i.e. from the original maze)
+        return $dmaze.blank-pos.grep(-> $p { $p.x !%% 2 && $p.y !%% 2 }).elems;
+    }
 
     # Stringification
     method Str
