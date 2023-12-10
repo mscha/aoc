@@ -122,7 +122,7 @@ class PipeMaze
 
         # We may have a negative area if we went anti-clockwise.
         # Also, compensate for overcounted partial border cells
-        # (basically the reverse of Pick's theorem)
+        # (basically Pick's theorem in reverse).
         return abs($area) - $border/2 + 1;
     }
 
