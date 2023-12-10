@@ -178,7 +178,8 @@ class PipeMaze
     method char-at(Position $p)
     {
         return '▓' if %!filled{$p};
-        return $.at($p).trans('|-LJ7F.S' => $.in-loop($p) ?? '┃━┗┛┓┏░█' !! '│─└┘┐┌░█');
+        return $.at($p).trans('|-LJ7F.S' => '┃━┗┛┓┏░█') if $.in-loop($p);
+        return $.at($p).trans('|-LJ7F.S' => '│─└┘┐┌░█');
     }
     method Str
     {
