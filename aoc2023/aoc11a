@@ -14,7 +14,7 @@ class Position
 
     method distance-to(Position $p) { abs($!x - $p.x) + abs($!y - $p.y) }
 
-    method WHICH { ValueObjAt.new("Pos|$!x|$!y") }
+    method WHICH { ValueObjAt.new("Position|$!x|$!y") }
 }
 sub pos(Int() $x, Int() $y) { Position.new(:$x, :$y) }
 
