@@ -112,7 +112,8 @@ class PipeMaze
         # Use the shoelace formula to determine the area
         my @loop = $!start-pos,
                    @.reachable($!start-pos).head,
-                   -> $p, $q { @.reachable($q, :exclude($p)).head } ...
+                   -> $p, $q { @.reachable($q, :exclude($p)).head } \
+                    ...
                    -> $, $q { $q eq $!start-pos };
         my $area = (@loop Z @loop[1..*])
                         .map(-> ($p,$q) { $p.x × $q.y - $p.y × $q.x })
