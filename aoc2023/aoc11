@@ -48,7 +48,7 @@ class GalaxyMap
     }
 }
 
-sub MAIN(IO() $inputfile where *.f = 'aoc11.input', :v(:$verbose) = False)
+sub MAIN(IO() $inputfile where *.f = 'aoc11.input')
 {
     my $map = GalaxyMap.new(:map($inputfile.slurp));
     say 'Part one: ', $map.distance-sum;
