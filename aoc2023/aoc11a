@@ -1,0 +1,61 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 11 -- https://adventofcode.com/2023/day/11
+
+class Position
+{
+    has Int $.x;
+    has Int $.y;
+
+    method Str { "($!x,$!y)" }
+    method gist { self.Str }
+
+    method distance-to(Position $p) { abs($!x - $p.x) + abs($!y - $p.y) }
+
+    method WHICH { ValueObjAt.new("Pos|$!x|$!y") }
+}
+sub pos(Int() $x, Int() $y) { Position.new(:$x, :$y) }
+
+class GalaxyMap
+{
+    has Str $.map;
+    has Int $.scale = 2;
+
+    has @.grid = $!map.lines».comb;
+    has Int $.height = @!grid.elems;
+    has Int $.width = @!grid[0].elems;
+
+    has Int @.empty-rows = (^$!height).grep({ all(@!grid[$^y;*]) eq '.' });
+    has Int @.empty-cols = (^$!width).grep({ all(@!grid[*;$^x]) eq '.' });
+
+    has Position @.galaxies = self.find-galaxies;
+
+    method scaled-pos($x,$y)
+    {
+        return pos($x + ($!scale - 1) × @!empty-cols.grep(* < $x).elems,
+                   $y + ($!scale - 1) × @!empty-rows.grep(* < $y).elems);
+    }
+
+    method find-galaxies
+    {
+        (^$!height X ^$!width).grep(-> ($y,$x) { @!grid[$y;$x] eq '#' })
+                              .map(-> ($y,$x) { $.scaled-pos($x,$y) });
+    }
+
+    method distance-sum
+    {
+        return @!galaxies.combinations(2)
+                         .map(-> ($g1,$g2) { $g1.distance-to($g2) })
+                         .sum;
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc11.input')
+{
+    my $map = GalaxyMap.new(:map($inputfile.slurp));
+    say 'Part one: ', $map.distance-sum;
+    my $map2 = GalaxyMap.new(:map($inputfile.slurp), :scale(1_000_000));
+    say 'Part two: ', $map2.distance-sum;
+}
