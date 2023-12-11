@@ -1,0 +1,91 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2021 day 19 -- https://adventofcode.com/2021/day/19
+
+class Scanner
+{
+    state $counter = 0;
+
+    has Str $.data is required;
+    has Int $.index = ++$counter;
+    has Bool $.verbose = False;
+
+    has @.pos;
+    has @.dist;
+
+    has Set $.distances;
+
+    submethod TWEAK
+    {
+        for $!data.lines -> $line {
+            next if $line ~~ /^\s*$/;
+            my ($x, $y, $z) = $line.comb(/'-'?\d+/) or next;
+            @!pos.push: [$x,$y,$z];
+            self.calc-distances(@!pos.end);
+        }
+        $!distances = set @!dist[*;*];
+    }
+
+    sub distance(@a, @b) { (@a Z- @b)»².sum }
+
+    method calc-distances(Int $idx)
+    {
+        for ^@!pos -> $i {
+            @!dist[$idx;$i] = @!dist[$i;$idx] = distance(@!pos[$idx], @!pos[$i]);
+        }
+    }
+
+    method matching-distances(Scanner $s) { self.distances ∩ $s.distances }
+
+    method points-with-distance(Int $dist)
+    {
+        (^@!pos X ^@!pos).first(-> ($i,$j) { @!dist[$i;$j] == $dist });
+    }
+
+    method fit-to(Scanner $s)
+    {
+        say "Fitting scanner $!index to $s.index() ..." if $!verbose;
+        # Find the highest matching distance between the two scanners,
+        my $max-dist = self.matching-distances($s).keys.max;
+        say "Highest matching distance: $max-dist" if $!verbose;
+
+        # Find points with this distance in both scanners and make sure their
+        # deltas are useable
+
+        my ($i0, $i1) = $s.points-with-distance($max-dist);
+        my @p0 := $s.pos[$i0]; my @p1 := $s.pos[$i1];
+        my @δp = (@p0 Z- @p1);
+        say "(@p0.join(',')) → (@p1.join(',')); δ = (@δp.join(','))" if $!verbose;
+
+        my ($j0, $j1) = self.points-with-distance($max-dist);
+        my @q0 := @!pos[$j0]; my @q1 := @!pos[$j1];
+        my @δq = (@q0 Z- @q1);
+        say "(@q0.join(',')) → (@q1.join(',')); δ = (@δq.join(','))" if $!verbose;
+
+        die "Not enough unique δ values: (@δp.join(','))!"
+                    unless @δp.unique.elems == 3;
+        die "δ values don't match: (@δp.join(',')), (@δq.join(','))"
+                    unless @δp».abs.sort eqv @δq».abs.sort;
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc19.input', Bool :v(:$verbose) = False)
+{
+    # Parse all scanners' data
+    my @scanners = $inputfile.slurp.split(/:s '---' scanner \d+ '---'/, :skip-empty)
+                   .map({ Scanner.new(:data($_), :$verbose) });
+
+    # Combine all scanners' results.  Start with the first one.
+    my $combi = @scanners.shift;
+    while @scanners {
+        # Sort the scanners by number of matching distances, descending
+        # Use the best one for matching
+        @scanners .= sort(-*.matching-distances($combi));
+        my $match = @scanners.shift;
+        
+        # Fit the coordinates of the match to the combi
+        $match.fit-to($combi)
+    }
+}

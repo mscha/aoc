@@ -12,7 +12,7 @@ class Position
     method Str { "($!x,$!y)" }
     method gist { self.Str }
 
-    method WHICH { ValueObjAt.new("Pos|$!x|$!y") }
+    method WHICH { ValueObjAt.new("Position|$!x|$!y") }
 }
 sub pos(Int() $x, Int() $y) { Position.new(:$x, :$y) }
 

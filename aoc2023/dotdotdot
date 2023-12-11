@@ -1,0 +1,7 @@
+#!/usr/bin/env raku
+
+my @fibo = 1,
+           1,
+           -> $a, $b { $a + $b } ...
+           *;
+say @fibo[^10];

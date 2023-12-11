@@ -1,0 +1,17 @@
+#!/usr/bin/env raku
+
+sub infix:<∩>(Range $r1, Range $r2)
+{
+    my ($min1, $max1) = $r1.int-bounds;
+    my ($min2, $max2) = $r2.int-bounds;
+    return Nil if $max1 < $min2 || $max2 < $min1;
+    return max($min1,$min2) .. min($max1,$max2);
+}
+
+my $r = 1..10;
+my $r1 = 2..^5;
+my $r2 = 7^..15;
+
+say $r ∩ $r1;   # 2..5
+say $r ∩ $r2;   # 7..10
+say $r1 ∩ $r2;  # Nil
