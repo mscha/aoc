@@ -1,0 +1,126 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 12 -- https://adventofcode.com/2023/day/12
+
+constant $OPERATIONAL = '.';
+constant $DAMAGED = '#';
+constant $UNKNOWN = '?';
+
+grammar SpringSpec
+{
+    rule TOP { <spring-list> <group-list> }
+    rule spring-list { <spring-char>+ }
+    rule group-list { <pos>+ % ',' }
+    token spring-char { $OPERATIONAL | $DAMAGED | $UNKNOWN }
+    token pos { \d+ }
+}
+
+class SpringRow
+{
+    has Str $.spec;
+    has Int $.folds = 1;
+    has Bool $.verbose = False;
+
+    has Str $.unfolded-spec = unfold($!spec, $!folds);
+    has Str @.springs;
+    has Str $.spring-str;
+    has Int @.groups;
+
+    has Int $.count-operational;
+    has Int $.count-damaged;
+    has Int $.count-unknown;
+    has Int $.actual-damaged;
+    has Int $.count-unknown-damaged;
+    has Int @.pos-unknown;
+
+    submethod TWEAK { SpringSpec.parse($!unfolded-spec, :actions(self)) }
+
+    sub unfold(Str $spec, Int $folds) {
+        my ($springs, $counts) = $spec.split(/\s+/);
+        return ($springs xx $folds).join('?') ~ ' ' ~ ($counts xx $folds).join(',');
+    }
+
+    # Grammar action methods
+    method spring-list($/) {
+        @!springs = $<spring-char>».Str;
+        $!spring-str = @!springs.join;
+        $!count-operational = @!springs.grep($OPERATIONAL).elems;
+        $!count-damaged = @!springs.grep($DAMAGED).elems;
+        $!count-unknown = @!springs.grep($UNKNOWN).elems;
+        @!pos-unknown = @!springs.grep($UNKNOWN, :k);
+    }
+    method group-list($/) {
+        @!groups = $<pos>».Int;
+        $!actual-damaged = @!groups.sum;
+        $!count-unknown-damaged = $!actual-damaged - $!count-damaged;
+    }
+
+    sub damaged-groups(@springs) { @springs.join.match(/$DAMAGED+/, :g)».chars }
+
+    has %!_arr_cache;
+    method count-arrangements(Int $start = 0, Int $group-ix = 0)
+    {
+        # Return any cached value
+        if %!_arr_cache{$start}{$group-ix}:exists {
+            say "#{' ' x $start} CACHED ($start,$group-ix) -> %!_arr_cache{$start}{$group-ix}" if $!verbose;
+            return %!_arr_cache{$start}{$group-ix};
+        }
+
+        # We're done if we have no more groups to place.
+        if ($group-ix ≥ @!groups) {
+            if $start < @!springs && $!spring-str.substr($start).contains($DAMAGED) {
+                # We missed a known damaged spring, so don't count this
+                say "#{' ' x $start} not ok, <$!spring-str.substr($start)> remaining" if $!verbose;
+                return %!_arr_cache{$start}{$group-ix} = 0;
+            }
+            else {
+                # No known damaged springs, so we have a valid arrangement
+                say "#{' ' x $start} OK ($start,$group-ix) -> 1" if $!verbose;
+                return %!_arr_cache{$start}{$group-ix} = 1;
+            }
+        }
+
+        say "# checking $!spring-str with groups @!groups.join(','); ",
+            "$!count-unknown-damaged of $!count-unknown unknown springs" if $!verbose && !$start;
+        my $count = 0;
+        
+        # Find the last position where the first group might start (based on
+        # group count/sizes) and check all positions from start to this end
+        my $group = @!groups[$group-ix];
+        my $end = @!springs - @!groups[$group-ix..*].sum - @!groups.elems + $group-ix + 1;
+        for $start .. $end -> $pos {
+            # Don't bother if there's a known operational spring here
+            next if @!springs[$pos] eq $OPERATIONAL;
+
+            # Check if we can put the first group here:
+            #  - all springs must be damaged or unknown
+            #  - the spring after that (if any) may not be damaged
+            if !$!spring-str.substr($pos, $group).contains($OPERATIONAL)
+                        && (@!springs[$pos + $group] // $OPERATIONAL) ne $DAMAGED {
+                # It may fit.  Now try the rest of the groups and count the possibilities
+                say "#{' ' x $pos} try group size $group at position $pos <",
+                                @!springs[$pos ..^ $pos+$group].join, '> ', 
+                                @!springs[$pos+$group] // '(end)' if $!verbose;
+                $count += self.count-arrangements($pos + $group + 1, $group-ix+1);
+            }
+
+            # If we have a definite damaged spring at this position, there must
+            # must be a group starting here, so don't bother checking further
+            last if @!springs[$pos] eq $DAMAGED;
+        }
+
+        say "# → $count arrangements possible" if $!verbose && !$start;
+        return %!_arr_cache{$start}{$group-ix} = $count;
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc12.input', Bool :v(:$verbose) = False)
+{
+    my @rows = $inputfile.lines.map: -> $spec { SpringRow.new(:$spec, :$verbose) }
+    say "Part one: {@rows».count-arrangements.sum} arrangements";
+
+    my @rows2 = $inputfile.lines.map: -> $spec { SpringRow.new(:$spec, :5folds, :$verbose) }
+    say "Part two: {@rows2».count-arrangements.sum} arrangements";
+}
