@@ -1,0 +1,80 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 12 -- https://adventofcode.com/2023/day/12
+
+constant $OPERATIONAL = '.';
+constant $DAMAGED = '#';
+constant $UNKNOWN = '?';
+
+grammar SpringSpec
+{
+    rule TOP { <spring-list> <group-list> }
+    rule spring-list { <spring-char>+ }
+    rule group-list { <pos>+ % ',' }
+    token spring-char { $OPERATIONAL | $DAMAGED | $UNKNOWN }
+    token pos { \d+ }
+}
+
+class SpringRow
+{
+    has Str $.spec;
+    has Bool $.verbose = False;
+
+    has Str @.springs;
+    has Int @.groups;
+
+    has Int $.count-operational;
+    has Int $.count-damaged;
+    has Int $.count-unknown;
+    has Int $.actual-damaged;
+    has Int $.count-unknown-damaged;
+    has Int @.pos-unknown;
+
+    submethod TWEAK { SpringSpec.parse($!spec, :actions(self)) }
+
+    # Grammar action methods
+    method spring-list($/) {
+        @!springs = $<spring-char>».Str;
+        $!count-operational = @!springs.grep($OPERATIONAL).elems;
+        $!count-damaged = @!springs.grep($DAMAGED).elems;
+        $!count-unknown = @!springs.grep($UNKNOWN).elems;
+        @!pos-unknown = @!springs.grep($UNKNOWN, :k);
+    }
+    method group-list($/) {
+        @!groups = $<pos>».Int;
+        $!actual-damaged = @!groups.sum;
+        $!count-unknown-damaged = $!actual-damaged - $!count-damaged;
+    }
+
+    sub damaged-groups(@springs) { @springs.join.match(/$DAMAGED+/, :g)».chars }
+
+    method count-arrangements
+    {
+        say "# checking @!springs.join() with groups @!groups.join(','); ",
+            "$!count-unknown-damaged of $!count-unknown unknown springs" if $!verbose;
+        my $count = 0;
+        for @!pos-unknown.combinations($!count-unknown-damaged) -> @pos {
+            my @try = @!springs;
+            @try[$_] = $DAMAGED for @pos;
+            my @try-groups = damaged-groups(@try);
+            if @try-groups ~~ @!groups {
+                $count++;
+                say "#   @try.join(): POSSIBLE - groups ", @try-groups if ($!verbose);
+            }
+            else {
+                say "#   @try.join(): impossible - groups ", @try-groups if ($!verbose);
+            }
+        }
+        say "# → $count arrangements are possible" if $!verbose;
+        return $count;
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc12.input', Bool :v(:$verbose) = False)
+{
+    my @rows = $inputfile.lines.map: -> $spec { SpringRow.new(:$spec, :$verbose) }
+    say "Part one: {@rows».count-arrangements.sum} arrangements";
+    # Part two: TODO
+}
