@@ -56,7 +56,7 @@ class SpringRow
             "$!count-unknown-damaged of $!count-unknown unknown springs" if $!verbose;
         my $count = 0;
         for @!pos-unknown.combinations($!count-unknown-damaged) -> @pos {
-            my @try = @!springs; @try[@pos] »=» $DAMAGED;
+            my @try = @!springs; @try[$_] = $DAMAGED for @pos;
             my @try-groups = damaged-groups(@try);
             if @try-groups ~~ @!groups {
                 $count++;
