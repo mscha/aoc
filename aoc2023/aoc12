@@ -25,7 +25,6 @@ class SpringRow
 
     has Str $.unfolded-spec = unfold($!spec, $!folds);
     has Str @.springs;
-    has Str $.spring-str;
     has Int @.groups;
 
     has Int $.count-operational;
@@ -45,7 +44,6 @@ class SpringRow
     # Grammar action methods
     method spring-list($/) {
         @!springs = $<spring-char>».Str;
-        $!spring-str = @!springs.join;
         $!count-operational = @!springs.grep($OPERATIONAL).elems;
         $!count-damaged = @!springs.grep($DAMAGED).elems;
         $!count-unknown = @!springs.grep($UNKNOWN).elems;
@@ -63,16 +61,16 @@ class SpringRow
     method count-arrangements(Int $start = 0, Int $group-ix = 0)
     {
         # Return any cached value
-        if %!_arr_cache{$start}{$group-ix}:exists {
-            say "#{' ' x $start} CACHED ($start,$group-ix) -> %!_arr_cache{$start}{$group-ix}" if $!verbose;
-            return %!_arr_cache{$start}{$group-ix};
+        with %!_arr_cache{$start}{$group-ix} {
+            say "#{' ' x $start} CACHED ($start,$group-ix) -> $_" if $!verbose;
+            .return;
         }
 
         # We're done if we have no more groups to place.
         if ($group-ix ≥ @!groups) {
-            if $start < @!springs && $!spring-str.substr($start).contains($DAMAGED) {
+            if any(@!springs[$start..*]) eq $DAMAGED {
                 # We missed a known damaged spring, so don't count this
-                say "#{' ' x $start} not ok, <$!spring-str.substr($start)> remaining" if $!verbose;
+                say "#{' ' x $start} not ok, <@!springs[$start..*].join()> remaining" if $!verbose;
                 return %!_arr_cache{$start}{$group-ix} = 0;
             }
             else {
@@ -82,13 +80,13 @@ class SpringRow
             }
         }
 
-        say "# checking $!spring-str with groups @!groups.join(','); ",
+        say "# checking @!springs.join() with groups @!groups.join(','); ",
             "$!count-unknown-damaged of $!count-unknown unknown springs" if $!verbose && !$start;
-        my $count = 0;
         
         # Find the last position where the first group might start (based on
         # group count/sizes) and check all positions from start to this end
-        my $group = @!groups[$group-ix];
+        my $count = 0;
+        my $curr-group = @!groups[$group-ix];
         my $end = @!springs - @!groups[$group-ix..*].sum - @!groups.elems + $group-ix + 1;
         for $start .. $end -> $pos {
             # Don't bother if there's a known operational spring here
@@ -97,13 +95,13 @@ class SpringRow
             # Check if we can put the first group here:
             #  - all springs must be damaged or unknown
             #  - the spring after that (if any) may not be damaged
-            if !$!spring-str.substr($pos, $group).contains($OPERATIONAL)
-                        && (@!springs[$pos + $group] // $OPERATIONAL) ne $DAMAGED {
+            if none(@!springs[$pos..^$pos+$curr-group]) eq $OPERATIONAL
+                        && (@!springs[$pos + $curr-group] // $OPERATIONAL) ne $DAMAGED {
                 # It may fit.  Now try the rest of the groups and count the possibilities
-                say "#{' ' x $pos} try group size $group at position $pos <",
-                                @!springs[$pos ..^ $pos+$group].join, '> ', 
-                                @!springs[$pos+$group] // '(end)' if $!verbose;
-                $count += self.count-arrangements($pos + $group + 1, $group-ix+1);
+                say "#{' ' x $pos} try group size $curr-group at position $pos <",
+                                @!springs[$pos ..^ $pos+$curr-group].join, '> ', 
+                                @!springs[$pos+$curr-group] // '(end)' if $!verbose;
+                $count += self.count-arrangements($pos + $curr-group + 1, $group-ix+1);
             }
 
             # If we have a definite damaged spring at this position, there must
