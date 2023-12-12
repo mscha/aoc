@@ -66,7 +66,7 @@ class SpringRow
                 say "#   @try.join(): impossible - groups ", @try-groups if ($!verbose);
             }
         }
-        say "# → $count arrangements are possible" if $!verbose;
+        say "# → $count arrangements possible" if $!verbose;
         return $count;
     }
 }
