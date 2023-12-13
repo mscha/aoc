@@ -17,7 +17,7 @@ class ValleyMap
     method row(Int $i) { @!grid[$i-1;*] }
     method column(Int $i) { @!grid[*;$i-1] }
 
-    sub differences(@a, @b) { (@a Z @b).grep(-> ($a,$b) { $a ne $b }).elems }
+    sub differences(@a, @b) { (@a Z @b).grep({ ![eq] @^ab }).elems }
 
     method column-symmetry(Int $col)
     {
