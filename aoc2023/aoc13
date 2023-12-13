@@ -1,0 +1,80 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 13 -- https://adventofcode.com/2023/day/13
+
+class ValleyMap
+{
+    has Str $.spec;
+    has Int $.smudges = 0;
+    has Bool $.verbose = False;
+
+    has @.grid = $!spec.lines».comb;
+    has Int $.height = @!grid.elems;
+    has Int $.width = @!grid[0].elems;
+
+    method row(Int $i) { @!grid[$i-1;*] }
+    method column(Int $i) { @!grid[*;$i-1] }
+
+    sub differences(@a, @b) { (@a Z @b).map(-> ($a,$b) { $a ne $b }).sum }
+
+    method column-symmetry(Int $col)
+    {
+        my $diff = 0;
+        for 0 ..^ min($col, $!width - $col) -> $c {
+            $diff += differences(@.column($col-$c), @.column($col+1+$c));
+            last if $diff > $!smudges;
+        }
+
+        if ($diff == $!smudges) {
+            say "COLUMN $col" if $!verbose;
+            return True;
+        }
+        else {
+            return False;
+        }
+    }
+
+    method row-symmetry(Int $row)
+    {
+        my $diff = 0;
+        for 0 ..^ min($row, $!height - $row) -> $r {
+            $diff += differences(@.row($row-$r), @.row($row+1+$r));
+            last if $diff > $!smudges;
+        }
+
+        if ($diff == $!smudges) {
+            say "ROW $row" if $!verbose;
+            return True;
+        }
+        else {
+            return False;
+        }
+    }
+
+    method pattern-notes
+    {
+        say $!spec if $!verbose;
+        my $notes = 0;
+        for 1 ..^ $!width -> $c {
+            $notes += $c if $.column-symmetry($c);
+        }
+        for 1 ..^ $!height -> $r {
+            $notes += 100*$r if $.row-symmetry($r);
+        }
+
+        say "NO SYMMETRY FOUND" if $!verbose && !$notes;
+        say '' if $!verbose;
+        return $notes;
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc13.input', Bool :v(:$verbose) = False)
+{
+    my @maps = $inputfile.slurp.trim.split("\n\n").map({ ValleyMap.new(:spec($_), :$verbose) });
+    say "Part one: total pattern notes = ", @maps».pattern-notes.sum;
+
+    my @maps2 = $inputfile.slurp.trim.split("\n\n").map({ ValleyMap.new(:spec($_), :1smudges, :$verbose) });
+    say "Part two: total pattern notes = ", @maps2».pattern-notes.sum;
+}
