@@ -1,2 +1,2 @@
 # aoc
-Advent of Code - mscha's Perl 6 solutions
+Advent of Code - mscha's Raku (Perl 6) solutions
