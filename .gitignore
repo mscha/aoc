@@ -36,3 +36,5 @@ inc/
 
 out*
 .precomp
+
+*.test*
