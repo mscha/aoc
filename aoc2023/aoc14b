@@ -1,0 +1,170 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 14 -- https://adventofcode.com/2023/day/14
+
+# Attempt to make it faster by creating 4 separate tilt methods instead of
+# rotating the grid all the time.
+# Works, but doesn't make a huge difference - from 26 to 19 seconds.
+
+constant EMPTY = '.';
+constant ROUND = 'O';
+constant SQUARE = '#';
+
+class Platform
+{
+    has Str $.map;
+    has Bool $.verbose = False;
+
+    has @.grid = $!map.lines».comb».Array;
+    has $.height = @!grid.elems;
+    has $.width = @!grid[0].elems;
+
+    method tilt-north
+    {
+        for ^$!width -> $x {
+            my @avail = Empty;
+            for ^$!height -> $y {
+                given @!grid[$y;$x] {
+                    when EMPTY {
+                        @avail.push($y);
+                    }
+                    when SQUARE {
+                        @avail = Empty;
+                    }
+                    when ROUND {
+                        if @avail {
+                            my $pos = @avail.shift;
+                            @!grid[$pos;$x] = ROUND;
+                            @!grid[$y;$x] = EMPTY;
+                            @avail.push($y);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    method tilt-west
+    {
+        for ^$!height -> $y {
+            my @avail = Empty;
+            for ^$!width -> $x {
+                given @!grid[$y;$x] {
+                    when EMPTY {
+                        @avail.push($x);
+                    }
+                    when SQUARE {
+                        @avail = Empty;
+                    }
+                    when ROUND {
+                        if @avail {
+                            my $pos = @avail.shift;
+                            @!grid[$y;$pos] = ROUND;
+                            @!grid[$y;$x] = EMPTY;
+                            @avail.push($x);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    method tilt-south
+    {
+        for ^$!width -> $x {
+            my @avail = Empty;
+            for reverse ^$!height -> $y {
+                given @!grid[$y;$x] {
+                    when EMPTY {
+                        @avail.push($y);
+                    }
+                    when SQUARE {
+                        @avail = Empty;
+                    }
+                    when ROUND {
+                        if @avail {
+                            my $pos = @avail.shift;
+                            @!grid[$pos;$x] = ROUND;
+                            @!grid[$y;$x] = EMPTY;
+                            @avail.push($y);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    method tilt-east
+    {
+        for ^$!height -> $y {
+            my @avail = Empty;
+            for reverse ^$!width -> $x {
+                given @!grid[$y;$x] {
+                    when EMPTY {
+                        @avail.push($x);
+                    }
+                    when SQUARE {
+                        @avail = Empty;
+                    }
+                    when ROUND {
+                        if @avail {
+                            my $pos = @avail.shift;
+                            @!grid[$y;$pos] = ROUND;
+                            @!grid[$y;$x] = EMPTY;
+                            @avail.push($x);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    method spin
+    {
+        self.tilt-north;
+        self.tilt-west;
+        self.tilt-south;
+        self.tilt-east;
+    }
+
+    method cycle($times)
+    {
+        my $target = $times;
+        my $loop;
+        my Int %seen;
+        for 1..∞ -> $c {
+            self.spin;
+            return if $c == $target;
+
+            if !$loop && my $before = %seen{self} {
+                $loop = $c - $before;
+                say "Loop of size $loop from $before to $c" if $!verbose;
+                $target -= ($target - $c) div $loop × $loop;
+                say "Changing target from $times to $target" if $!verbose;
+            }
+            %seen{self} = $c;
+        }
+    }
+
+    method total-load
+    {
+        return @!grid.kv.map(-> $y, @row { @row.grep(ROUND).elems × ($!height - $y) }).sum;
+    }
+
+    method Str { @!grid».join.join("\n") }
+    method gist { $.Str }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc14.input', Bool :v(:$verbose) = False)
+{
+    my $platform = Platform.new(:map($inputfile.slurp), :$verbose);
+    say $platform if $verbose;
+    $platform.tilt-north;
+    say "\n$platform" if $verbose;
+    say "Part one: total load is $platform.total-load()";
+    $platform.cycle(1_000_000_000);
+    say "\n$platform" if $verbose;
+    say "Part two: total load is $platform.total-load()";
+}
