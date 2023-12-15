@@ -4,7 +4,7 @@ $*OUT.out-buffer = False;   # Autoflush
 
 # Advent of Code 2023 day 15 -- https://adventofcode.com/2023/day/15
 
-sub hash(Str $s) { "\0$s".comb».ord.reduce({ 17×($^curr+$^val) % 256 }) }
+sub hash(Str $s) { "\0$s".ords.reduce({ 17×($^curr+$^val) % 256 }) }
 
 class Lens
 {
