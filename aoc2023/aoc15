@@ -1,0 +1,98 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 15 -- https://adventofcode.com/2023/day/15
+
+sub hash(Str $s)
+{
+    my $curr = 0;
+    for $s.comb -> $c {
+        $curr = (17 × ($curr + $c.ord)) % 256;
+    }
+    return $curr;
+}
+
+class Lens
+{
+    has Str $.label;
+    has Int $.focal-length;
+
+    method power(Int $box, Int $slot)
+    {
+        return ($box+1) × ($slot+1) × $!focal-length;
+    }
+
+    method Str { "[$!label $!focal-length]" }
+    method gist { self.Str }
+}
+
+class LensSystem
+{
+    has Bool $.verbose = False;
+
+    has @.boxes = [] xx 256;
+
+    method add(Str() $label, Int() $focal-length)
+    {
+        my $box = hash($label);
+        say "# box $box: add $label = $focal-length" if $!verbose;
+        my $lens = Lens.new(:$label, :$focal-length);
+        with @!boxes[$box].first(*.label eq $label, :k) {
+            @!boxes[$box][$_] = $lens;
+        }
+        else {
+            @!boxes[$box].append($lens);
+        }
+        say self if $!verbose;
+    }
+
+    method remove(Str() $label)
+    {
+        my $box = hash($label);
+        say "# box $box: remove $label" if $!verbose;
+        my $pos = @!boxes[$box].first(*.label eq $label, :k);
+        @!boxes[$box].splice($pos, 1) if $pos.defined;
+        say self if $!verbose;
+    }
+
+    multi method apply(Str $instruction)
+    {
+        given $instruction {
+            when /^ (\w+) '=' (\d) $/ {
+                self.add($0, $1);
+            }
+            when /^ (\w+) '-' $/ {
+                self.remove($0);
+            }
+            default {
+                die "Unknown instruction: $_!";
+            }
+        }
+    }
+    multi method apply(*@instructions) { self.apply($_) for @instructions }
+
+    method focusing-power {
+        return @!boxes.grep(+*, :kv).map(-> $i, @b {
+            @b.kv.map(-> $j, $l { $l.power($i, $j) }).sum
+        }).sum;
+    }
+
+    method Str
+    {
+        return @!boxes.grep(+*, :kv).map(-> $i, @b {
+            "# - box $i: @b.join(' ')";
+        }).join("\n")
+    }
+    method gist { self.Str }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc15.input', Bool :v(:$verbose) = False)
+{
+    my @init = $inputfile.slurp.trim.split(',');
+    say 'Part 1: the sum of the hash values is ', @init».&hash.sum;
+
+    my $lenses = LensSystem.new(:$verbose);
+    $lenses.apply(@init);
+    say 'Part 1: the total focusing power is ', $lenses.focusing-power;
+}
