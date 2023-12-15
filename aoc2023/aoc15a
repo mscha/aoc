@@ -48,14 +48,14 @@ class LensSystem
     multi method apply(*@instructions) { self.apply($_) for @instructions }
 
     method focusing-power {
-        return @!boxes.grep(*.elems, :kv).map(-> $i, %b {
+        return @!boxes.grep(?*, :kv).map(-> $i, %b {
             %b.values.kv.map(-> $j, $fl { ($i+1)×($j+1)×$fl }).sum
         }).sum;
     }
 
     method Str
     {
-        return @!boxes.grep(*.elems, :kv).map(-> $i, %b {
+        return @!boxes.grep(?*, :kv).map(-> $i, %b {
             "# - box $i: " ~ %b.map({ "[$_.key() $_.value()]" })
         }).join("\n")
     }
