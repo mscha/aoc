@@ -31,7 +31,7 @@ class LensSystem
 {
     has Bool $.verbose = False;
 
-    has @.boxes = [] xx 256;
+    has Array[Lens] @!boxes = Array[Lens].new xx 256;
 
     method add(Str() $label, Int() $focal-length)
     {
