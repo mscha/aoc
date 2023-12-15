@@ -1,0 +1,73 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 15 -- https://adventofcode.com/2023/day/15
+
+# Slightly simplified solution using Hash::Ordered
+
+sub hash(Str $s) { "\0$s".ords.reduce({ 17×($^curr+$^val) % 256 }) }
+
+class LensSystem
+{
+    has Bool $.verbose = False;
+
+    use Hash::Ordered;
+    has @!boxes = Hash::Ordered.new xx 256;
+
+    method add(Str() $label, Int() $focal-length)
+    {
+        my $box = hash($label);
+        say "# box $box: add $label = $focal-length" if $!verbose;
+        @!boxes[$box]{$label} = $focal-length;
+        say self if $!verbose;
+    }
+
+    method remove(Str() $label)
+    {
+        my $box = hash($label);
+        say "# box $box: remove $label" if $!verbose;
+        @!boxes[$box]{$label}:delete;
+        say self if $!verbose;
+    }
+
+    multi method apply(Str $instruction)
+    {
+        given $instruction {
+            when /^ (\w+) '=' (\d) $/ {
+                self.add($0, $1);
+            }
+            when /^ (\w+) '-' $/ {
+                self.remove($0);
+            }
+            default {
+                die "Unknown instruction: $_!";
+            }
+        }
+    }
+    multi method apply(*@instructions) { self.apply($_) for @instructions }
+
+    method focusing-power {
+        return @!boxes.grep(*.elems, :kv).map(-> $i, %b {
+            %b.values.kv.map(-> $j, $fl { ($i+1)×($j+1)×$fl }).sum
+        }).sum;
+    }
+
+    method Str
+    {
+        return @!boxes.grep(*.elems, :kv).map(-> $i, %b {
+            "# - box $i: " ~ %b.map({ "[$_.key() $_.value()]" })
+        }).join("\n")
+    }
+    method gist { self.Str }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc15.input', Bool :v(:$verbose) = False)
+{
+    my @init = $inputfile.slurp.trim.split(',');
+    say 'Part 1: the sum of the hash values is ', @init».&hash.sum;
+
+    my $lenses = LensSystem.new(:$verbose);
+    $lenses.apply(@init);
+    say 'Part 1: the total focusing power is ', $lenses.focusing-power;
+}
