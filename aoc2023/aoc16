@@ -127,6 +127,8 @@ class MirrorCave
                           |(^$!width).map({ beam($^x,$!height, north) }),
                           |(^$!height).map({ beam(-1,$^y, east) }),
                           |(^$!height).map({ beam($!width,$^y, east) });
+
+        # Find the highest number of energized tiles for these beams
         return @start-beams.map({ self.num-energized($^beam) }).max;
     }
 
