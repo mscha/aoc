@@ -1,0 +1,162 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 16 -- https://adventofcode.com/2023/day/16
+
+enum Direction <north east south west>;
+my Direction %reverse{Direction} = north,south, east,west, south,north, west,east;
+my Int %dx{Direction} = north, 0, east,1, south,0, west,-1;
+my Int %dy{Direction} = north,-1, east,0, south,1, west, 0;
+
+class Position
+{
+    has Int $.x;
+    has Int $.y;
+
+    method neighbour(Direction $dir) { pos($!x+%dx{$dir}, $!y+%dy{$dir}) }
+    method neighbours { Direction::.values.map: -> $dir { $.neighbour($dir) } }
+
+    method Str { "($!x,$!y)" }
+    method gist { self.Str }
+
+    method WHICH { ValueObjAt.new("Position|$!x|$!y") }
+}
+sub pos(Int() $x, Int() $y) { Position.new(:$x, :$y) }
+
+class Beam
+{
+    has Position $.pos;
+    has Direction $.dir;
+
+    method Str { $!pos ~ <↑ → ↓ ←>[$!dir] }
+    method gist { self.Str }
+
+    method WHICH { ValueObjAt.new("Beam|$!pos.x()|$!pos.y()|$!dir") }
+}
+multi beam(Position $pos, Direction $dir) { Beam.new(:$pos, :$dir) }
+multi beam(Int() $x, Int() $y, Direction() $dir) { Beam.new(:pos(pos($x,$y)), :$dir) }
+
+class MirrorCave
+{
+    has Str $.map;
+    has Bool $.verbose = False;
+
+    has @.grid = $!map.lines».comb;
+    has Int $.height = @!grid.elems;
+    has Int $.width = @!grid[0].elems;
+    has Int $.max-y = $!height - 1;
+    has Int $.max-x = $!width - 1;
+
+    has Bool %.energized{Position};
+
+    # Is p a valid grid position?
+    method in-grid($p) { 0 ≤ $p.x < $!width && 0 ≤ $p.y < $!height }
+
+    # The contents of the maze at position p
+    method at(Position $p) { $.in-grid($p) ?? @!grid[$p.y;$p.x] !! '.' }
+
+    # All valid positions in the maze
+    method all-pos { (^$!width X ^$!height).map(-> ($x,$y) { pos($x,$y) }) }
+
+    # Find the next beam(s) for a given beam.
+    # Optionally don't move to the next position (used at start).
+    method next(Beam $beam, Bool :$move = True)
+    {
+        my $pos = $move ?? $beam.pos.neighbour($beam.dir) !! $beam.pos;
+        my $dir = $beam.dir;
+        given $.at($pos) {
+            when '/' {
+                return beam($pos, (east, north, west, south)[$dir]);
+            }
+            when '\\' {
+                return beam($pos, (west, south, east, north)[$dir]);
+            }
+            when '-' {
+                if $dir == north|south {
+                    return beam($pos, east), beam($pos, west);
+                }
+                else {
+                    return beam($pos, $dir);
+                }
+            }
+            when '|' {
+                if $dir == east|west {
+                    return beam($pos, north), beam($pos, south);
+                }
+                else {
+                    return beam($pos, $dir);
+                }
+            }
+            default {
+                return beam($pos, $dir);
+            }
+        }
+    }
+
+    # Energize the cave from a given starting position
+    method energize(Beam $start = beam(0,0, east))
+    {
+        my Beam @queue = self.next($start, :!move);
+        my Int %seen{Beam};
+        %!energized = Empty;
+        while @queue {
+            my $beam = @queue.shift;
+            next unless $.in-grid($beam.pos);
+            say "# skip $beam, already seen" if $!verbose && %seen{$beam};
+            next if %seen{$beam}++;
+
+            say "# $beam.pos(): energized" if $!verbose && !%!energized{$beam.pos};
+            %!energized{$beam.pos} = True;
+
+            my @next = self.next($beam);
+            @queue.append(@next.grep({ $.in-grid($_.pos) }));
+            say "# next: @next[], queue: @queue[]" if $!verbose;
+            #say self if $!verbose;
+        }
+    }
+
+    # Count number of energized tiles, optionally after energizing the cave
+    # from a given starting position
+    method num-energized(Beam $start?)
+    {
+        self.energize($start) if $start;
+        %!energized.elems
+    }
+
+    # Energize the cave from all starting positions and return the highest
+    # number of energized tiles
+    method max-energized
+    {
+        my @start-beams = |(^$!width).map({ beam($^x,0, south) }),
+                          |(^$!width).map({ beam($^x,$!max-y, north) }),
+                          |(^$!height).map({ beam(0,$^y, east) }),
+                          |(^$!height).map({ beam($!max-x,$^y, east) });
+        return @start-beams.map(-> $beam { self.num-energized($beam) }).max;
+    }
+
+    # Stringification
+    method char-at(Position $p)
+    {
+        use Terminal::ANSIColor;
+        return %!energized{$p} ?? colored($.at($p), 'black on_yellow')
+                               !! colored($.at($p), 'black on_white');
+    }
+    method Str
+    {
+        return (^$!height).map(-> $y {
+            (^$!width).map(-> $x { $.char-at(pos($x,$y)) }).join
+        }).join("\n");
+    }
+    method gist { self.Str }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc16.input', :v(:$verbose) = False)
+{
+    my $cave = MirrorCave.new(:map($inputfile.slurp), :$verbose);
+    say $cave if $verbose;
+    $cave.energize;
+    say $cave if $verbose;
+    say "Part one: $cave.num-energized() tiles are energized.";
+    say "Part two: $cave.max-energized() tiles are energized in the best configuration.";
+}
