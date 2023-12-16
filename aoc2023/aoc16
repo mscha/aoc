@@ -115,7 +115,7 @@ class MirrorCave
     method num-energized(Beam $start?)
     {
         self.energize($start) if $start;
-        %!energized.elems
+        return %!energized.elems;
     }
 
     # Energize the cave from all starting positions and return the highest
