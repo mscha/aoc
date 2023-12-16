@@ -101,8 +101,7 @@ class MirrorCave
         my Beam @queue = self.next($start, :!move);
         my Int %seen{Beam};
         %!energized = Empty;
-        while @queue {
-            my $beam = @queue.shift;
+        while my $beam = @queue.shift {
             next unless $.in-grid($beam.pos);
             say "# skip $beam, already seen" if $!verbose && %seen{$beam};
             next if %seen{$beam}++;
