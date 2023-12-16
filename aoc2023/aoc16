@@ -127,7 +127,7 @@ class MirrorCave
                           |(^$!width).map({ beam($^x,$!height, north) }),
                           |(^$!height).map({ beam(-1,$^y, east) }),
                           |(^$!height).map({ beam($!width,$^y, east) });
-        return @start-beams.map(-> $beam { self.num-energized($beam) }).max;
+        return @start-beams.map({ self.num-energized($^beam) }).max;
     }
 
     # Stringification
