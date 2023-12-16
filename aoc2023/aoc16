@@ -6,13 +6,14 @@ $*OUT.out-buffer = False;   # Autoflush
 
 enum Direction <north east south west>;
 my Direction %reverse{Direction} = north,south, east,west, south,north, west,east;
-my Int %dx{Direction} = north, 0, east,1, south,0, west,-1;
-my Int %dy{Direction} = north,-1, east,0, south,1, west, 0;
 
 class Position
 {
     has Int $.x;
     has Int $.y;
+
+    my Int %dx{Direction} = north, 0, east,1, south,0, west,-1;
+    my Int %dy{Direction} = north,-1, east,0, south,1, west, 0;
 
     method neighbour(Direction $dir) { pos($!x+%dx{$dir}, $!y+%dy{$dir}) }
     method neighbours { Direction::.values.map: -> $dir { $.neighbour($dir) } }
