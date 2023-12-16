@@ -46,8 +46,6 @@ class MirrorCave
     has @.grid = $!map.lines».comb;
     has Int $.height = @!grid.elems;
     has Int $.width = @!grid[0].elems;
-    has Int $.max-y = $!height - 1;
-    has Int $.max-x = $!width - 1;
 
     has Bool %.energized{Position};
 
@@ -61,10 +59,9 @@ class MirrorCave
     method all-pos { (^$!width X ^$!height).map(-> ($x,$y) { pos($x,$y) }) }
 
     # Find the next beam(s) for a given beam.
-    # Optionally don't move to the next position (used at start).
-    method next(Beam $beam, Bool :$move = True)
+    method next(Beam $beam)
     {
-        my $pos = $move ?? $beam.pos.neighbour($beam.dir) !! $beam.pos;
+        my $pos = $beam.pos.neighbour($beam.dir);
         my $dir = $beam.dir;
         given $.at($pos) {
             when '/' {
@@ -96,9 +93,10 @@ class MirrorCave
     }
 
     # Energize the cave from a given starting position
-    method energize(Beam $start = beam(0,0, east))
+    # (Default: just left of the NW corner pointing east)
+    method energize(Beam $start = beam(-1,0, east))
     {
-        my Beam @queue = self.next($start, :!move);
+        my Beam @queue = self.next($start);
         my Int %seen{Beam};
         %!energized = Empty;
         while my $beam = @queue.shift {
@@ -128,10 +126,11 @@ class MirrorCave
     # number of energized tiles
     method max-energized
     {
-        my @start-beams = |(^$!width).map({ beam($^x,0, south) }),
-                          |(^$!width).map({ beam($^x,$!max-y, north) }),
-                          |(^$!height).map({ beam(0,$^y, east) }),
-                          |(^$!height).map({ beam($!max-x,$^y, east) });
+        # Collect all beams just outside of the grid, pointing inwards
+        my @start-beams = |(^$!width).map({ beam($^x,-1, south) }),
+                          |(^$!width).map({ beam($^x,$!height, north) }),
+                          |(^$!height).map({ beam(-1,$^y, east) }),
+                          |(^$!height).map({ beam($!width,$^y, east) });
         return @start-beams.map(-> $beam { self.num-energized($beam) }).max;
     }
 
