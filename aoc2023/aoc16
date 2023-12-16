@@ -5,7 +5,6 @@ $*OUT.out-buffer = False;   # Autoflush
 # Advent of Code 2023 day 16 -- https://adventofcode.com/2023/day/16
 
 enum Direction <north east south west>;
-my Direction %reverse{Direction} = north,south, east,west, south,north, west,east;
 
 class Position
 {
@@ -54,9 +53,6 @@ class MirrorCave
 
     # The contents of the maze at position p
     method at(Position $p) { $.in-grid($p) ?? @!grid[$p.y;$p.x] !! '.' }
-
-    # All valid positions in the maze
-    method all-pos { (^$!width X ^$!height).map(-> ($x,$y) { pos($x,$y) }) }
 
     # Find the next beam(s) for a given beam.
     method next(Beam $beam)
