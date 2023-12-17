@@ -146,15 +146,13 @@ class GearIsland
                 return $crucible.heatloss;
             }
 
-            # If a crucible was in the same state before (with a lower heat loss),
-            # don't bother
+            # Don't bother if a crucible was in the same state before (with lower heat loss)
             if %seen{$crucible.state}++ {
                 say "#   been here before with lower heat loss, skipping" if $!verbose;
                 next;
             }
 
             # Find all the places we can go from here, and add them to the queue.
-            # Sort the queue by heat loss.
             my @next = self.next($crucible);
             for @next -> $c { $queue.push($c, $c.heatloss) }
             say "#   append @next[], queue length now $queue.elems()" if $!verbose;
