@@ -1,0 +1,187 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 17 -- https://adventofcode.com/2023/day/17
+
+class PriorityQueue
+{
+    has %!queue{Int};
+    has Int $.count = 0;
+    has Int $!min;
+
+    method push($item, Int $priority)
+    {
+        %!queue{$priority}.push($item);
+        $!count++;
+        $!min min= $priority;
+    }
+
+    method shift
+    {
+        die "Can't shift empty queue!" unless $!count;
+        LEAVE {
+            $!count--;
+            if %!queue{$!min}.elems == 0 {
+                %!queue{$!min}:delete;
+                $!min = $!count ?? %!queue.keys.min !! Nil;
+            }
+        }
+        return %!queue{$!min}.shift;
+    }
+
+    method elems { $!count }
+    method Bool { so $!count }
+}
+
+enum Direction <north east south west>;
+sub left(Direction $d --> Direction) { Direction(($d - 1) % 4) }
+sub right(Direction $d --> Direction) { Direction(($d + 1) % 4) }
+
+class Position
+{
+    has Int $.x;
+    has Int $.y;
+
+    my Int %dx{Direction} = north, 0, east,1, south,0, west,-1;
+    my Int %dy{Direction} = north,-1, east,0, south,1, west, 0;
+
+    method neighbour(Direction $dir) { pos($!x+%dx{$dir}, $!y+%dy{$dir}) }
+    method neighbours { Direction::.values.map: -> $dir { $.neighbour($dir) } }
+
+    method Str { "($!x,$!y)" }
+    method gist { self.Str }
+
+    method WHICH { ValueObjAt.new("Position|$!x|$!y") }
+}
+sub pos(Int() $x, Int() $y) { Position.new(:$x, :$y) }
+
+class Crucible
+{
+    has Position $.pos;
+    has Direction $.dir;
+    has Int $.straight = 1;
+    has Int $.heatloss = 0;
+
+    method state { "$!pos|$!dir|$!straight" }
+
+    method Str { $!pos ~ <↑ → ↓ ←>[$!dir] ~ "[$!straight]:$!heatloss" }
+    method gist { self.Str }
+
+    method WHICH { ValueObjAt.new("Crucible|$!pos|$!dir|$!straight|$!heatloss") }
+}
+multi crucible(Position $pos, Direction $dir, Int $straight = 1, Int $heatloss = 0)
+{
+    return Crucible.new(:$pos, :$dir, :$straight, :$heatloss);
+}
+multi crucible(Int() $x, Int() $y, Direction() $dir, Int $straight = 1, Int $heatloss = 0)
+{
+    return Crucible.new(:pos(pos($x,$y)), :$dir, :$straight, :$heatloss);
+}
+
+class GearIsland
+{
+    has Str $.map;
+    has Int $.min-straight = 1;
+    has Int $.max-straight = 3;
+    has Bool $.verbose = False;
+
+    has @.grid = $!map.lines».comb;
+    has Int $.height = @!grid.elems;
+    has Int $.width = @!grid[0].elems;
+
+    has Int %!heatloss{Position} =
+            (^$!width X ^$!height).map(-> ($x,$y) { pos($x,$y) => +@!grid[$y;$x] });
+
+    has $.lava-pool = pos(0,0);
+    has $.factory = pos($!width-1,$!height-1);
+
+    # Is p a valid grid position?
+    method in-grid($p) { 0 ≤ $p.x < $!width && 0 ≤ $p.y < $!height }
+
+    # Find all places we can go to, given a crucible's state
+    method next(Crucible $crucible)
+    {
+        my $pos = $crucible.pos;
+        my $dir = $crucible.dir;
+        my $loss = $crucible.heatloss;
+        my $straight = $crucible.straight;
+        gather {
+            # Go straight if we can
+            if $straight < $!max-straight {
+                my $pos-s = $pos.neighbour($dir);
+                take crucible($pos-s, $dir, $straight+1, $loss+%!heatloss{$pos-s}) if $.in-grid($pos-s);
+            }
+
+            # Go left and right if we can
+            if $straight ≥ $!min-straight {
+                my $dir-l = left($dir);
+                my $pos-l = $pos.neighbour($dir-l);
+                take crucible($pos-l, $dir-l, 1, $loss+%!heatloss{$pos-l}) if $.in-grid($pos-l);
+
+                my $dir-r = right($dir);
+                my $pos-r = $pos.neighbour($dir-r);
+                take crucible($pos-r, $dir-r, 1, $loss+%!heatloss{$pos-r}) if $.in-grid($pos-r);
+            }
+        }
+    }
+
+    # Find the route with the least heat loss between two positions
+    method calc-heatloss(Position $start = $!lava-pool, Position $end = $!factory)
+    {
+        # Start at the given position, try all directions
+        my $queue = PriorityQueue.new;
+        for Direction::.values -> $dir { $queue.push(crucible($start, $dir), 0) }
+        my Bool %seen = Empty;
+
+        loop {
+            # Grab a crucible from the queue with the lowest heat loss so far
+            die "Can't reach $end!" unless $queue;
+            my $crucible = $queue.shift;
+            say "# $crucible:" if $!verbose;
+
+            # Are we at the end position, and can we stop?  If so, we're done
+            if $crucible.pos eqv $end && $crucible.straight ≥ $!min-straight {
+                say "#   at $end, done!" if $!verbose;
+                return $crucible.heatloss;
+            }
+
+            # If a crucible was in the same state before (with a lower heat loss),
+            # don't bother
+            if %seen{$crucible.state}++ {
+                say "#   been here before with lower heat loss, skipping" if $!verbose;
+                next;
+            }
+
+            # Find all the places we can go from here, and add them to the queue.
+            # Sort the queue by heat loss.
+            my @next = self.next($crucible);
+            for @next -> $c { $queue.push($c, $c.heatloss) }
+            say "#   append @next[], queue length now $queue.elems()" if $!verbose;
+        }
+    }
+
+    # Stringification
+    method Str
+    {
+        return (^$!height).map(-> $y {
+            (^$!width).map(-> $x { @!grid[$y;$x] }).join
+        }).join("\n");
+    }
+    method gist { self.Str }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc17.input', Int :p(:$part), Bool :v(:$verbose) = False)
+{
+    my $map = $inputfile.slurp;
+
+    if (!$part || $part == 1) {
+        my $island = GearIsland.new(:$map, :$verbose);
+        say "Part one: the minimal heat loss is $island.calc-heatloss().";
+    }
+
+    if (!$part || $part == 2) {
+        my $island2 = GearIsland.new(:$map, :min-straight(4), :max-straight(10), :$verbose);
+        say "Part two: the minimal heat loss is $island2.calc-heatloss().";
+    }
+}
