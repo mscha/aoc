@@ -64,11 +64,11 @@ class Lagoon
     method swap($direction, $count, $color)
     {
         constant @DIRECTIONS = <R D L U>;
-        constant %DIRECTION-MAP = :R(0), :D(1), :L(2), :U(3);
+        constant %DIRECTION-IX = @DIRECTIONS.kv.reverse;
 
         my $direction1 = @DIRECTIONS[$color.substr(6)];
         my $count1 = $color.substr(1,5).parse-base(16);
-        my $color1 = sprintf('#%05x%x', $count, %DIRECTION-MAP{$direction});
+        my $color1 = sprintf('#%05x%x', $count, %DIRECTION-IX{$direction});
 
         say "# $direction $count ($color) → $direction1 $count1 ($color1)" if $!verbose; 
         return $direction1, $count1, $color1;
