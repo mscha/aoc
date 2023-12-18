@@ -110,7 +110,6 @@ class Lagoon
 
         # We may have a negative area if we went anti-clockwise.
         # Also, add the outer part of the squares on the border
-        say $area;
         $area = abs($area) + @!steps»<count>.sum / 2 + 1;
 
         return $area × $depth;
