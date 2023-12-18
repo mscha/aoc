@@ -70,7 +70,7 @@ class Lagoon
         my $count1 = $color.substr(1,5).parse-base(16);
         my $color1 = sprintf('#%05x%x', $count, %DIRECTION-MAP{$direction});
 
-        say "# $direction $count ($color) -> $direction1 $count1 ($color1)" if $!verbose; 
+        say "# $direction $count ($color) → $direction1 $count1 ($color1)" if $!verbose; 
         return $direction1, $count1, $color1;
     }
 
@@ -105,7 +105,7 @@ class Lagoon
     method volume(Int $depth = 1)
     {
         # Use the shoelace formula to determine the area
-        my $area = (@!points Z★ @!points.rotate(1)).sum / 2;
+        my $area = (@!points Z★ @!points.rotate(1)).sum.abs / 2;
 
         # We may have a negative area if we went anti-clockwise.
         # Also, add the outer part of the squares on the border
