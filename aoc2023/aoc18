@@ -30,6 +30,7 @@ class Position
     method WHICH { ValueObjAt.new("Position|$!x|$!y") }
 }
 sub pos(Int() $x, Int() $y) { Position.new(:$x, :$y) }
+sub infix:<★>(Position $a, Position $b) { $a.x × $b.y - $b.x × $a.y }
 
 grammar LagoonPlan
 {
@@ -104,9 +105,7 @@ class Lagoon
     method volume(Int $depth = 1)
     {
         # Use the shoelace formula to determine the area
-        my $area = (@!points Z @!points.rotate(1))
-                        .map(-> ($p,$q) { $p.x × $q.y - $p.y × $q.x })
-                        .sum / 2;
+        my $area = (@!points Z★ @!points.rotate(1)).sum / 2;
 
         # We may have a negative area if we went anti-clockwise.
         # Also, add the outer part of the squares on the border
