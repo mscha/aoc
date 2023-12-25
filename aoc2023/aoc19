@@ -1,0 +1,181 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 19 -- https://adventofcode.com/2023/day/19
+
+grammar PartsProcessingSpec
+{
+    rule TOP { <workflow>+ <part>+ }
+
+    rule workflow { <name> '{' <subrule>+ %% ',' <default> '}' }
+    rule subrule { <category> <comp> <val> ':' <name> }
+    rule default { <name> }
+
+    rule part { '{' <rating>+ % ',' '}' }
+    rule rating { <category> '=' <val> }
+
+    token name { \w+ }
+    token category { x|m|a|s }
+    token comp { '<'|'>' }
+    token val { \d+ }
+}
+
+class Part
+{
+    has Int %.rating;
+
+    has Int $.total-rating = %!rating.values.sum;
+
+    method Str { "\{x=%!rating<x>,m=%!rating<m>,a=%!rating<a>,s=%!rating<s>\}" }
+    method gist { self.Str }
+}
+
+class PartRange
+{
+    has Range %.rating;
+
+    has Int $.count = [×] %!rating.values».Int;
+
+    method split(Str $category, Str $comp, Int $value)
+    {
+        my %match = %!rating;
+        my %fail = %!rating;
+        my ($min, $max) = %!rating{$category}.int-bounds;
+        given $comp {
+            when '<' {
+                %match{$category} = $min ..^ $value;
+                %fail{$category} = $value .. $max;
+            }
+            when '>' {
+                %match{$category} = $value ^.. $max;
+                %fail{$category} = $min .. $value;
+            }
+            default {
+                die "Unknown comparison '$comp'!";
+            }
+        }
+        return PartRange.new(:rating(%match)), PartRange.new(:rating(%fail));
+    }
+
+    method full-range
+    {
+        return PartRange.new(:rating({ x=>1..4000, m=>1..4000, a=>1..4000, s=>1..4000 }));
+    }
+
+    method Str { '{' ~ <x m a s>.map({ "$_=%!rating{$_}.gist()" }).join(',') ~ '}' }
+    method gist { self.Str }
+}
+
+class Workflow
+{
+    has @.subrules;
+    has Str $.default;
+
+    multi sub compare(Int $a, '<', Int $b) { $a < $b }
+    multi sub compare(Int $a, '>', Int $b) { $a > $b }
+
+    method process(Part $p)
+    {
+        for @!subrules -> $s {
+            return $s<next> if compare($p.rating{$s<category>}, $s<comp>, $s<value>);
+        }
+        return $!default;
+    }
+
+    method process-ranges(PartRange $pr)
+    {
+        my $remaining = $pr;
+        gather {
+            for @!subrules -> $s {
+                my ($m, $r) = $remaining.split($s<category>, $s<comp>, $s<value>);
+                take $m => $s<next>;
+                $remaining = $r;
+            }
+            take $remaining => $!default;
+        }
+    }
+}
+
+class PartsProcessor
+{
+    has Str $.spec;
+    has Bool $.verbose = False;
+
+    has Workflow %.workflows;
+    has Part @.accepted;
+    has Part @.rejected;
+
+    submethod TWEAK
+    {
+        PartsProcessingSpec.parse($!spec, :actions(self));
+    }
+
+    method workflow($/)
+    {
+        my @subrules = $/<subrule>.map(-> $s { { category=>~$s<category>, comp=>~$s<comp>, value=>+$s<val>, next=>~$s<name> } });
+        my $default = ~$/<default>;
+        %!workflows{$<name>} = Workflow.new(:@subrules, :$default);
+    }
+
+    method part($/)
+    {
+        my %rating = $<rating>.map(-> $r { ~$r<category> => +$r<val> });
+        my $part = Part.new(:%rating);
+        self.process($part);
+    }
+
+    method process(Part $p)
+    {
+        say "# Processing $p ..." if $!verbose;
+        my $rule = 'in';
+        loop {
+            say "#  - $rule" if $!verbose;
+            given $rule {
+                when 'A' {
+                    @!accepted.append($p);
+                    last;
+                }
+                when 'R' {
+                    @!rejected.append($p);
+                    last;
+                }
+                default {
+                    $rule = %!workflows{$rule}.process($p);
+                }
+            }
+        }
+    }
+
+    method total-accepted-rating { @!accepted».total-rating.sum }
+
+    method count-accepted-ratings(Str $rule = 'in', PartRange $pr = PartRange.full-range)
+    {
+        given $rule {
+            when 'A' {
+                say "# accepted: $pr → $pr.count()" if $!verbose;
+                return $pr.count;
+            }
+            when 'R' {
+                say "# rejected: $pr" if $!verbose;
+                return 0;
+            }
+            default {
+                say "# try rule '$rule': $pr" if $!verbose;
+                my @proc = %!workflows{$rule}.process-ranges($pr);
+                if ($!verbose) {
+                    say "#  - $_.key() => $_.value()" for @proc;
+                }
+                return @proc.map(-> $r { self.count-accepted-ratings($r.value, $r.key) }).sum;
+            }
+        }
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc19.input', Bool :v(:$verbose) = False)
+{
+    my $spec = $inputfile.slurp;
+    my $proc = PartsProcessor.new(:$spec, :$verbose);
+    say "Part one: the total rating of the accepted parts is $proc.total-accepted-rating().";
+    say "Part two: the number of accepted rating combinarions is $proc.count-accepted-ratings().";
+}
