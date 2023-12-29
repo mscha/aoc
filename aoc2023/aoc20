@@ -1,0 +1,293 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 20 -- https://adventofcode.com/2023/day/20
+
+enum Pulse <low high>;
+
+class Queue
+{
+    has @!queue handles<Int Bool>;
+    has Bool %!contains;
+
+    method push(*@x)
+    {
+        for @x -> $x {
+            next if %!contains{$x};
+            %!contains{$x} = True;
+            @!queue.push($x);
+        }
+    }
+
+    method shift
+    {
+        return Nil unless @!queue;
+        my $x = @!queue.shift;
+        %!contains{$x}:delete;
+        return $x;
+    }
+}
+
+grammar ModuleConfig
+{
+    rule TOP { <module>+ }
+    rule module { <type>?<name> '->' <output>+ % ',' }
+
+    token type { '%' | '&' }
+    token name { \w+ }
+    token output { \w+ }
+}
+
+class DesertMachine { ... }
+
+role DesertModule
+{
+    has Str $.name;
+    has Str @.outputs;
+    has Bool $.verbose = False;
+
+    has Str @.inputs;
+    has DesertMachine $.controller; # = CALLER::self;
+
+    has Int %!pulse-count{Pulse} = low,0, high,0;
+
+    has Bool $.sent-high = False;
+
+    method connect-outputs
+    {
+        for @!outputs -> $o {
+            .add-input($!name) with $!controller.find-module($o);
+        }
+    }
+
+    method add-input(Str $input) { @!inputs.append($input) }
+
+    method receive(Pulse $p, Str $input) { ... }
+
+    method send(*@pulses)
+    {
+        for @pulses -> $p {
+            for @!outputs -> $o {
+                .receive($p, $!name) with $!controller.find-module($o);
+                say "# $!name -{$p}-> $o" if $!verbose;
+                %!pulse-count{$p}++;
+                $!sent-high = True if $p == high;
+            }
+        }
+    }
+
+    method tick { ... }
+
+    method pulse-count(Pulse $p) { %!pulse-count{$p} }
+
+    method Str
+    {
+        return sprintf('%s (%s): %s → %s → %s',
+                       $!name, self.^name,
+                       @!inputs.join(','), $!name, @!outputs.join(','));
+    }
+    method gist { self.Str }
+}
+
+class FlipFlopModule does DesertModule
+{
+    has Pulse $!state = low;
+    has Int $low-count = 0;
+
+    method receive(Pulse $p, Str $input) {
+        $!low-count++ if $p == low;
+    }
+
+    method tick
+    {
+        return Empty if $!low-count == 0;
+
+        for ^$!low-count {
+            $!state = (high, low)[$!state];
+            self.send($!state);
+        }
+
+        $!low-count = 0;
+        return @!outputs;
+    }
+}
+
+class ConjunctionModule does DesertModule
+{
+    has Pulse %!pulses;
+    has Pulse @!pending;
+
+    method receive(Pulse $p, Str $input)
+    {
+        %!pulses{$input} = $p;
+        @!pending.append: %!pulses.values.sum == @!inputs ?? low !! high;
+    }
+
+    method tick
+    {
+        return Empty unless @!pending;
+
+        self.send(@!pending);
+        @!pending = Empty;
+        return @!outputs;
+    }
+}
+
+class BroadcastModule does DesertModule
+{
+    has Pulse @!pending;
+
+    method receive(Pulse $p, Str $input)
+    {
+        @!pending.append($p);
+    }
+
+    method tick
+    {
+        return Empty unless @!pending;
+
+        self.send(@!pending);
+        @!pending = Empty;
+        return @!outputs;
+    }
+}
+
+class StopperModule does DesertModule
+{
+    has Bool $.stopped = False;
+
+    method receive(Pulse $p, Str $input)
+    {
+        $!stopped = True if $p == low;
+    }
+    
+    method tick { return Empty }
+}
+
+class DesertMachine
+{
+    has Str $.config;
+    has Str $.stopper;
+    has Bool $.verbose = False;
+
+    has DesertModule @!modules;
+    has DesertModule %!modules;
+
+    submethod TWEAK
+    {
+        my $button = BroadcastModule.new(:name<button>, :outputs<broadcaster>, :$!verbose, :controller(self));
+        %!modules<button> = $button;
+        @!modules.append($button);
+
+        if ($!stopper) {
+            my $stopperModule = StopperModule.new(:name($!stopper), :$!verbose, :controller(self));
+            %!modules{$!stopper} = $stopperModule;
+            @!modules.append($stopperModule);
+        }
+
+        ModuleConfig.parse($!config, :actions(self));
+        .connect-outputs for @!modules;
+        if $!verbose {
+            say '# modules:';
+            say "#  - $_" for @!modules;
+        }
+    }
+
+    method module($/)
+    {
+        my $name = ~$<name>;
+        my @outputs = $<output>».Str;
+        my $module = do given $<type> {
+            when '%' {
+                FlipFlopModule.new(:$name, :@outputs, :$!verbose, :controller(self));
+            }
+            when '&' {
+                ConjunctionModule.new(:$name, :@outputs, :$!verbose, :controller(self));
+            }
+            default {
+                BroadcastModule.new(:$name, :@outputs, :$!verbose, :controller(self));
+            }
+        }
+        %!modules{$name} = $module;
+        @!modules.append($module);
+    }
+
+    method find-module(Str $name) { %!modules{$name} }
+
+    method push-button(Int $times = 1)
+    {
+        for 1..$times -> $t {
+            say "# BUTTON PUSHED ($t)" if $!verbose;
+            %!modules<button>.receive(low, 'you');
+
+            my $queue = Queue.new;
+            $queue.push('button');
+            while (my $name = $queue.shift) {
+                $queue.push(.tick) with %!modules{$name};
+            }
+            say "# pulse score: ", self.pulse-score if $!verbose;
+        }
+    }
+
+    method push-button-until-stopped
+    {
+        die "Sorry, this won't finish until the heat death of the universe!";
+        my $stop = %!modules{$!stopper} or die "No stopper module!";
+        for 1..∞ -> $t {
+            self.push-button;
+            return $t if $stop.stopped;
+        }
+    }
+
+    method cycles-until-stopped
+    {
+        # Assuming that:
+        #  - the stopper has one input, a conjunction
+        #  - that input has a number of inputs, all conjunctions
+        #  - these conjunctions all usually output low, but output high once in a cycle
+        # we can detect the cycles of these conjunctions and take the LCM.
+
+        my @in1 = %!modules{$!stopper}.inputs;
+        die "$!stopper has @in1.elems() inputs!" unless @in1 == 1;
+        my $m1 = %!modules{@in1[0]};
+        die "$!stopper has a non-conjunction input!" unless $m1.isa(ConjunctionModule);
+
+        my @in2 = $m1.inputs;
+        die "{$!stopper}'s input has @in2.elems() inputs!" unless @in2 ≥ 1;
+        my @m2 = %!modules{@in2};
+        die "{$!stopper}'s input are not all conjuctions!" if @m2.grep({! .isa(ConjunctionModule) });
+
+        my %cycle;
+        for 1..∞ -> $t {
+            self.push-button;
+            for @in2 Z @m2 -> ($in, $m) {
+                next if %cycle{$in};
+                if $m.sent-high {
+                    say "# $in has cycle length $t" if $!verbose;
+                    %cycle{$in} = $t;
+                }
+            }
+            if %cycle == @in2 {
+                return [lcm] %cycle.values;
+            }
+        }
+    }
+
+    method pulse-score
+    {
+        return @!modules».pulse-count(low).sum × @!modules».pulse-count(high).sum;
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc20.input', Bool :v(:$verbose) = False)
+{
+    my $config = $inputfile.slurp;
+
+    my $machine = DesertMachine.new(:$config, :$verbose);
+    $machine.push-button(1000);
+    say "Part one: ", $machine.pulse-score;
+
+    my $machine2 = DesertMachine.new(:$config, :stopper<rx>, :$verbose);
+    say "Part two: ", $machine2.cycles-until-stopped;
+}
