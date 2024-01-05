@@ -1,0 +1,161 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 22 -- https://adventofcode.com/2023/day/22
+
+class Position
+{
+    has Int $.x;
+    has Int $.y;
+    has Int $.z;
+
+    method Str { "($!x,$!y,$!z)" }
+    method gist { self.Str }
+
+    method down(Int $n=1) { Position.new(:$!x, :$!y, :z($!z - $n)) }
+
+    method WHICH { ValueObjAt.new("Position|$!x|$!y|$!z") }
+}
+sub pos(Int() $x, Int() $y, Int() $z) { Position.new(:$x,:$y,:$z) }
+
+class Brick
+{
+    has Position $.start;
+    has Position $.end;
+
+    method from-spec(Brick:U: Str $spec)
+    {
+        my ($start, $end) = $spec.split('~').map(-> $xyz { pos(|$xyz.split(',')) });
+        return Brick.new(:$start, :$end);
+    }
+
+    method bottom { $!start.z }
+    method top { $!end.z }
+
+    method positions
+    {
+        return ($!start.x..$!end.x X $!start.y..$!end.y X $!start.z..$!end.z)
+                    .map(-> ($x,$y,$z) { pos($x,$y,$z) });
+    }
+
+    method bottom-positions
+    {
+        return ($!start.x..$!end.x X $!start.y..$!end.y X $!start.z)
+                    .map(-> ($x,$y,$z) { pos($x,$y,$z) });
+    }
+
+    method drop(Int $n = 1) { Brick.new(:start($!start.down($n)), :end($!end.down($n))) }
+
+    method Str { "$!start-$!end" }
+    method gist { self.Str }
+}
+
+class Stack
+{
+    has Brick @.bricks;
+    has Bool $.verbose = False;
+
+    has Bool %.occupied{Position};
+
+    submethod TWEAK
+    {
+        # Ensure the bricks are ordered by their bottom position
+        @!bricks .= sort(*.bottom);
+
+        # Keep track of occupied positions
+        %!occupied{$_.positions} »=» True for @!bricks
+    }
+
+    method settle
+    {
+        my $dropped;
+        repeat {
+            $dropped = 0;
+            for @!bricks.kv -> $i, $b {
+                my @bpos = $b.bottom-positions;
+                for 1 .. $b.bottom -> $d {
+                    if $d == $b.bottom || any(%!occupied{@bpos».down($d)}) {
+                        my $drop = $d-1;
+                        if ($drop) {
+                            $dropped += $drop;
+                            my $b1 = $b.drop($drop);
+                            say "$b drops to $b1" if $!verbose;
+                            %!occupied{$b.positions}:delete;
+                            %!occupied{$b1.positions} »=» True;
+                            @!bricks[$i] = $b1;
+                        }
+                        last;
+                    }
+                }
+            }
+        } while $dropped > 0;
+
+        # Ensure the bricks are (again) ordered by their bottom position
+        @!bricks .= sort(*.bottom);
+    }
+
+    method count-safe-bricks-and-collateral-damage
+    {
+        # Determine
+        #  - which bricks each bricks supports
+        #  - by how many bricks each brick is supported
+        my @supports = [] xx @!bricks;
+        my @supported = 0 xx @!bricks;
+        for @!bricks.kv -> $i1, $b1 {
+            for @!bricks.kv -> $i2, $b2 {
+                last if $i2 ≥ $i1;                  # b2 (and following bricks) are too high
+                next if $b2.top + 1 ≠ $b1.bottom;   # b2 is too low
+                if $b2.positions ∩ $b1.drop.positions {
+                    say "$b2 supports $b1" if $!verbose;
+                    @supports[$i2].append($i1);
+                    @supported[$i1]++;
+                }
+            }
+        }
+
+        # A brick can safely be removed if all bricks it supports are supported
+        # by at least two bricks
+        my $count1 = @supports.grep(-> @i { all(@supported[@i]) ≥ 2 }).elems;
+
+        # Now count the total "collateral damage" if we remove each block
+        # We only have to consider the blocks that _can't_ be safely removed.
+        my $count2 = 0;
+        for @supports.grep(-> @i { any(@supported[@i]) == 1 }, :k) -> $i {
+            say "Try removing brick $i..." if $!verbose;
+            temp @supported;
+            my @remove = $i;
+            while @remove {
+                # Remove the block, and decrease the supported count for blocks it supports
+                my $j = @remove.shift;
+                @supported[$_]-- for @supports[$j;*];
+
+                # Find out which blocks are now no longer supported.  Count them, and
+                # process those next.
+                my @unsupported = @supports[$j].grep({ @supported[$_] == 0 });
+                say " - removing $j removes support for @unsupported.join(',')" if $!verbose;
+                $count2 += @unsupported;
+                @remove.append(@unsupported);
+            }
+        }
+
+        return ($count1, $count2);
+    }
+
+    method Str { ('----------', |@!bricks, '----------').join("\n") }
+    method gist { self.Str }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc22.input', Int :$steps1 = 64, Int :$steps2 = 26501365; Bool :v(:$verbose) = False)
+{
+    my @bricks = $inputfile.lines.map(-> $l { Brick.from-spec($l) });
+    my $stack = Stack.new(:@bricks, :$verbose);
+    say "Start:\n$stack" if $verbose;
+
+    $stack.settle;
+    say "Settled:\n$stack" if $verbose;
+
+    my ($part1, $part2) = $stack.count-safe-bricks-and-collateral-damage;
+    say "Part 1: $part1 bricks can be disintegrated.";
+    say "Part 2: $part2 other bricks would fall.";
+}
