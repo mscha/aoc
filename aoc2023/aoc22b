@@ -77,7 +77,7 @@ class Stack
     {
         for @!bricks.kv -> $i, $b {
             # We can drop to the highest top of any bricks directly below, plus one
-            my $new-bottom = @!bricks.grep({ $^b2.below($b) })».top.max + 1;
+            my $new-bottom = @!bricks[^$i].grep({ $^b2.below($b) })».top.max + 1;
             $new-bottom max= 1;     # Don't drop beneath the ground
             if ($new-bottom < $b.bottom) {
                 @!bricks[$i] = $b.set-bottom($new-bottom);
