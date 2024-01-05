@@ -1,0 +1,126 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 21 -- https://adventofcode.com/2023/day/21
+
+enum Direction <north east south west>;
+sub left(Direction $d --> Direction) { Direction(($d - 1) % 4) }
+sub right(Direction $d --> Direction) { Direction(($d + 1) % 4) }
+
+class Position
+{
+    has Int $.x;
+    has Int $.y;
+
+    my Int %dx{Direction} = north, 0, east,1, south,0, west,-1;
+    my Int %dy{Direction} = north,-1, east,0, south,1, west, 0;
+
+    method neighbour(Direction $dir) { pos($!x+%dx{$dir}, $!y+%dy{$dir}) }
+    method neighbours { Direction::.values.map: -> $dir { $.neighbour($dir) } }
+
+    method Str { "($!x,$!y)" }
+    method gist { self.Str }
+
+    method WHICH { ValueObjAt.new("Position|$!x|$!y") }
+}
+sub pos(Int() $x, Int() $y) { Position.new(:$x, :$y) }
+
+class DesertGarden
+{
+    has Str $.map;
+    has Bool $.is-infinite = False;
+    has Bool $.verbose = False;
+
+    has @.grid = $!map.lines».comb;
+    has Int $.height = @!grid.elems;
+    has Int $.width = @!grid[0].elems;
+
+    has Position $.start-pos;
+
+    submethod TWEAK
+    {
+        my ($sy,$sx) = (^$!height X ^$!width).first(-> ($y,$x) { @!grid[$y;$x] eq 'S' });
+        $!start-pos = pos($sx,$sy);
+        say "# start position: $!start-pos" if $!verbose;
+    }
+
+    # Is p a valid grid position?
+    method in-grid(Position $p) { 0 ≤ $p.x < $!width && 0 ≤ $p.y < $!height }
+
+    method at(Position $p) { self.in-grid($p) ?? @!grid[$p.y;$p.x]
+                                  !! $!is-infinite ?? @!grid[$p.y % $!height; $p.x % $!width]
+                                  !! '#' }
+
+    method reachable-after(Int $steps)
+    {
+        my %reachable{Position};
+        my %seen{Position};
+        my $parity = $steps % 2;
+        my @current = $!start-pos,;
+        for 1..$steps -> $s {
+            my %next{Position};
+            for @current -> $p {
+                next if %seen{$p}++;
+
+                for $p.neighbours -> $q {
+                    if self.at($q) ne '#' {
+                        %next{$q}++;
+                        %reachable{$q} = True if $s % 2 == $parity;
+                    }
+                }
+            }
+            @current = %next.keys.sort;
+            #say "# after $s steps: %reachable.elems()" if $!verbose;
+        }
+
+        say "# after $steps steps: %reachable.elems()" if $!verbose;
+        return %reachable.elems;
+    }
+
+    method reachable-after-extrapolated(Int $steps)
+    {
+        # Note: this only works if a gazillion conditions are true for the input, which I'm not (all) going to check
+        die "Grid not square" if $!height ≠ $!width;
+
+        # It turns out that, for well-behaving input (NOT including the sample input!!),
+        # the number of reachable cells for i + 2n × grid-size steps # is a quadratic function.
+        # Calculate the first three values, determine the quadratic function, and fill in the right x value.
+
+        my $dsize = 2 × $!width;
+        my $num-dgrids = $steps div $dsize;
+        my $rest = $steps % $dsize;
+
+        my $y0 = self.reachable-after(0×$dsize + $rest);
+        my $y1 = self.reachable-after(1×$dsize + $rest);
+        my $y2 = self.reachable-after(2×$dsize + $rest);
+
+        my $a = ($y0 - 2*$y1 + $y2) / 2;
+        my $b = (4*$y1 - 3*$y0 - $y2) / 2;
+        my $c = $y0;
+
+        sub f($x) { $a*$x² + $b*$x + $c }
+
+        return f($num-dgrids);
+    }
+
+    # Stringification
+    method Str
+    {
+        return (^$!height).map(-> $y {
+            (^$!width).map(-> $x { @!grid[$y;$x] }).join
+        }).join("\n");
+    }
+    method gist { self.Str }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc21.input', Int :$steps1 = 64, Int :$steps2 = 26501365; Bool :v(:$verbose) = False)
+{
+    my $map = $inputfile.slurp;
+
+    my $garden = DesertGarden.new(:$map, :$verbose);
+    say "Part one: the number of reachable plots after $steps1 steps is ", $garden.reachable-after($steps1);
+
+    my $garden2 = DesertGarden.new(:$map, :is-infinite, :$verbose);
+    say "Part two: the number of reachable plots after $steps2 steps is ", $garden2.reachable-after-extrapolated($steps2);
+}
