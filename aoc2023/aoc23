@@ -100,7 +100,7 @@ class Forest
         my $longest = -1;
 
         my @hikes = Hike.start($!start-pos);
-        while my $h = @hikes.shift {
+        while my $h = @hikes.pop {
             say "# $h" if $!verbose;
             my @next = self.reachable-from($h.curr-pos)
                     .grep({ !$h.visited{$^n} });
