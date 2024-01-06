@@ -1,0 +1,190 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 23 -- https://adventofcode.com/2023/day/23
+
+enum Direction <north east south west>;
+sub left(Direction $d --> Direction) { Direction(($d - 1) % 4) }
+sub right(Direction $d --> Direction) { Direction(($d + 1) % 4) }
+
+class Position
+{
+    has Int $.x;
+    has Int $.y;
+
+    my Int %dx{Direction} = north, 0, east,1, south,0, west,-1;
+    my Int %dy{Direction} = north,-1, east,0, south,1, west, 0;
+
+    method neighbour(Direction $dir) { pos($!x+%dx{$dir}, $!y+%dy{$dir}) }
+    method neighbours { Direction::.values.map: -> $dir { $.neighbour($dir) } }
+
+    method Str { "($!x,$!y)" }
+    method gist { self.Str }
+
+    method WHICH { ValueObjAt.new("Position|$!x|$!y") }
+}
+sub pos(Int() $x, Int() $y) { Position.new(:$x, :$y) }
+
+class Hike
+{
+    has Position @.pos;
+
+    has Int $.num-steps = 0;
+    has Bool %.visited{Position};
+
+    submethod TWEAK { %!visited{@!pos} »=» True }
+
+    method start(Hike:U: Position $s) { Hike.new(:pos(($s,))) }
+
+    method curr-pos { @!pos.tail }
+
+    method step(Position $p, Int $count = 1)
+    {
+        @!pos.append($p);
+        %!visited{$p} = True;
+        $!num-steps += $count;
+    }
+
+    method clone { Hike.new(:@!pos, :$!num-steps) }
+
+    method Str { @!pos.join('-') ~ " ({self.num-steps} steps)" }
+    method gist { self.Str }
+}
+
+class Forest
+{
+    has Str $.map;
+    has Bool $.slippery = True;
+    has Bool $.verbose = False;
+
+    has @.grid = $!map.lines».comb;
+    has Int $.height = @!grid.elems;
+    has Int $.width = @!grid[0].elems;
+
+    has Position $.start-pos;
+    has Position $.end-pos;
+
+    has Position @!nodes;
+    has Set $!node-set;
+    has %!vertices{Position};
+
+    submethod TWEAK
+    {
+        my $sx = (^$!width).first(-> $x { @!grid[0;$x] ne '#' });
+        $!start-pos = pos($sx,0);
+        say "# start position: $!start-pos" if $!verbose;
+
+        my $ex = (^$!width).first(-> $x { @!grid[$!height-1;$x] ne '#' });
+        $!end-pos = pos($ex,$!height-1);
+        say "# end position: $!end-pos" if $!verbose;
+
+        self.generate-graph;
+    }
+
+    # Is p a valid grid position?
+    method in-grid(Position $p) { 0 ≤ $p.x < $!width && 0 ≤ $p.y < $!height }
+
+    method at(Position $p) { self.in-grid($p) ?? @!grid[$p.y;$p.x] !! '#' }
+
+    method reachable-from(Position $p)
+    {
+        # Determine what directions we might be going
+        my @dirs = do given $.at($p) {
+            when '.' { Direction::.values }
+            when '^' { $!slippery ?? north !! Direction::.values }
+            when '>' { $!slippery ?? east !! Direction::.values }
+            when 'v' { $!slippery ?? south !! Direction::.values }
+            when '<' { $!slippery ?? west !! Direction::.values }
+            default { Empty }
+        }
+
+        # Return all neighbours in those directions that don't have a wall
+        return @dirs.map({ $p.neighbour($^dir) }).grep({ $.at($^q) ne '#' });
+    }
+
+    method generate-graph
+    {
+        # Find all nodes - start, end, and all forks/crossings
+        @!nodes.append($!start-pos, $!end-pos);
+        for ^$!height X ^$!width -> ($y,$x) {
+            if @!grid[$y;$x] ne '#' {
+                my $p = pos($x,$y);
+                @!nodes.append($p) if self.reachable-from($p) > 2;
+            }
+        }
+        $!node-set = set @!nodes;
+        say "# nodes: ", @!nodes if $!verbose;
+
+        # For each node, hike to any next nodes and store the vertex with distance
+        for @!nodes -> $n {
+            my @hikes = Hike.start($n);
+            HIKE:
+            while my $h = @hikes.pop {
+                # If we're at a node (and we have taken at least one step),
+                # store the vertex with distance
+                my $curr = $h.curr-pos;
+                my $num-steps = $h.num-steps;
+                if $num-steps > 0 && $curr ∈ $!node-set {
+                    say "# Vertex: $n → $curr: $num-steps steps" if $!verbose;
+                    %!vertices{$n}.append($curr => $num-steps);
+                    next HIKE;
+                }
+
+                my @next = self.reachable-from($h.curr-pos).grep({ !$h.visited{$^n} });
+                
+                given @next.elems {
+                    when 0 {
+                        # Nowhere to go, end of walk
+                        next HIKE;
+                    }
+                    when 1 {
+                        # Only one place to go
+                        $h.step(@next[0]);
+                        @hikes.append($h);
+                    }
+                    default {
+                        # Multiple places to go, clone our walk
+                        for @next -> $n {
+                            my $h1 = $h.clone;
+                            $h1.step($n);
+                            @hikes.append($h1);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    has Bool %!seen{Position};
+    method longest-hike(Position $p = $!start-pos)
+    {
+        return 0 if $p eqv $!end-pos;
+
+        %!seen{$p} = True;
+        my $ans = %!vertices{$p}.grep(-> $v { !%!seen{$v.key} })
+                                .map(-> $v { self.longest-hike($v.key) + $v.value }).max;
+        %!seen{$p} = False;
+        return $ans;
+    }
+
+    # Stringification
+    method Str
+    {
+        return (^$!height).map(-> $y {
+            (^$!width).map(-> $x { @!grid[$y;$x] }).join
+        }).join("\n");
+    }
+    method gist { self.Str }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc23.input', Int :$steps1 = 64, Int :$steps2 = 26501365; Bool :v(:$verbose) = False)
+{
+    my $map = $inputfile.slurp;
+
+    my $forest1 = Forest.new(:$map, :$verbose);
+    say "Part one: the longest hike is $forest1.longest-hike() steps.";
+
+    my $forest2 = Forest.new(:$map, :!slippery, :$verbose);
+    say "Part two: the longest hike is $forest2.longest-hike() steps.";
+}
