@@ -67,7 +67,8 @@ class Forest
 
     has Position @!nodes;
     has Set $!node-set;
-    has %!vertices{Position};
+    has Int %!node-ix{Position};
+    has @!vertices;
 
     submethod TWEAK
     {
@@ -114,10 +115,12 @@ class Forest
             }
         }
         $!node-set = set @!nodes;
+        %!node-ix = @!nodes.kv.map(-> $i, $n { $n => $i });
         say "# nodes: ", @!nodes if $!verbose;
 
         # For each node, hike to any next nodes and store the vertex with distance
-        for @!nodes -> $n {
+        @!vertices = [] xx @!nodes;
+        for @!nodes.kv -> $i, $n {
             my @hikes = Hike.start($n);
             HIKE:
             while my $h = @hikes.pop {
@@ -127,7 +130,7 @@ class Forest
                 my $num-steps = $h.num-steps;
                 if $num-steps > 0 && $curr ∈ $!node-set {
                     say "# Vertex: $n → $curr: $num-steps steps" if $!verbose;
-                    %!vertices{$n}.append($curr => $num-steps);
+                    @!vertices[$i].append(%!node-ix{$curr} => $num-steps);
                     next HIKE;
                 }
 
@@ -156,15 +159,15 @@ class Forest
         }
     }
 
-    has Bool %!seen{Position};
-    method longest-hike(Position $p = $!start-pos)
+    has Bool @!seen = False xx @!nodes;
+    method longest-hike(Int $i = 0)
     {
-        return 0 if $p eqv $!end-pos;
+        return 0 if $i == 1;    # End position
 
-        %!seen{$p} = True;
-        my $ans = %!vertices{$p}.grep(-> $v { !%!seen{$v.key} })
+        @!seen[$i] = True;
+        my $ans = @!vertices[$i].grep(-> $v { !@!seen[$v.key] })
                                 .map(-> $v { self.longest-hike($v.key) + $v.value }).max;
-        %!seen{$p} = False;
+        @!seen[$i] = False;
         return $ans;
     }
 
