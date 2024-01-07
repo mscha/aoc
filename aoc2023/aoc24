@@ -1,0 +1,229 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 24 -- https://adventofcode.com/2023/day/24
+
+class Vector
+{
+    has $.x;
+    has $.y;
+    has $.z;
+
+    method coords { ($!x, $!y, $!z) }
+
+    method abs { sqrt($!x² + $!y² + $!z²) }
+    method abs2 { $!x² + $!y² + $!z² }
+
+    method add(Vector $v)
+    {
+        return Vector.new(:x($!x+$v.x), :y($!y+$v.y), :z($!z+$v.z));
+    }
+
+    method subtract(Vector $v)
+    {
+        return Vector.new(:x($!x-$v.x), :y($!y-$v.y), :z($!z-$v.z));
+    }
+
+    method multiply(Numeric $m)
+    {
+        return Vector.new(:x($m*$!x), :y($m*$!y), :z($m*$!z));
+    }
+
+    method div(Int $m)
+    {
+        return Vector.new(:x($!x div $m), :y($!y div $m), :z($!z div $m));
+    }
+
+    method cross(Vector $v)
+    {
+        return Vector.new(:x($!y*$v.z - $!z*$v.y),
+                          :y($!z*$v.x - $!x*$v.z),
+                          :z($!x*$v.y - $!y*$v.x));
+    }
+
+    method dot(Vector $v) { $!x*$v.x + $!y*$v.y + $!z*$v.z }
+
+    method Str { "($!x,$!y,$!z)" }
+    method gist { self.Str }
+
+    method WHICH { ValueObjAt.new("Vector|$!x|$!y|$!z") }
+}
+
+sub vec($x, $y, $z) { Vector.new(:$x, :$y, :$z) }
+
+multi sub infix:<+>(Vector $v1, Vector $v2) { $v1.add($v2) }
+multi sub infix:<->(Vector $v1, Vector $v2) { $v1.subtract($v2) }
+multi sub infix:<*>(Numeric $m, Vector $v) { $v.multiply($m) }
+multi sub infix:<*>(Vector $v, Numeric $m) { $v.multiply($m) }
+multi sub infix:<div>(Vector $v, Int $m) { $v.div($m) }
+multi sub infix:<×>(Vector $v1, Vector $v2) { $v1.cross($v2) }
+multi sub infix:<·>(Vector $v1, Vector $v2) { $v1.dot($v2) }
+
+# Calculate the determinant of the matrix composed of three vectors
+sub det(Vector $v1, Vector $v2, Vector $v3) { $v1 · ($v2 × $v3) }
+
+# Check if three vectors are linearly independent
+sub are-independent(Vector $v1, Vector $v2, Vector $v3)
+{
+    return det($v1, $v2, $v3) ≠ 0;
+}
+
+
+class Hailstone
+{
+    has Vector $.start;
+    has Vector $.velocity;
+
+    my $_nextname = 'A';
+    has $.name = $_nextname++;
+
+    method from-spec(Hailstone:U: Str $spec)
+    {
+        my ($px, $py, $pz, $vx, $vy, $vz) = $spec.comb(/'-'? \d+/)».Int;
+        return Hailstone.new(:start(vec($px,$py,$pz)), :velocity(vec($vx,$vy,$vz)));
+    }
+
+    # Find a formula ax + by + c = 0 for the trajectory of this hailstone
+    # in the XY plane (i.e. ignoring the Z coordinate)
+    method xy-trajectory
+    {
+        return ($!velocity.y, -$!velocity.x, $!start.y*$!velocity.x - $!start.x*$!velocity.y);
+    }
+
+    # Find the plane of possible velocity vectors that make it possible for
+    # a rock to hit both us and another hailstone
+    method find-rock-velocity-plane(Hailstone $h)
+    {
+        my $p12 = $!start - $h.start;
+        my $v12 = $!velocity - $h.velocity;
+        my $vv = $!velocity × $h.velocity;
+        return $p12 × $v12, $p12 · $vv;
+    }
+
+    method Str { "$!name: $!start → $!velocity" }
+    method gist { self.Str }
+}
+
+
+class Air
+{
+    has Hailstone @.hailstones;
+    has Range $.test-range;
+    has Bool $.verbose = False;
+
+    # Check if two hailstones' future trajectories intersect within the test area
+    method will-intersect(Hailstone $h1, Hailstone $h2)
+    {
+        say "# check $h1 and $h2 ..." if $!verbose;
+
+        # First, determine a formula ax + by - c = 0 for both trajectories
+        my ($a1, $b1, $c1) = $h1.xy-trajectory;
+        say "#  - $h1: $a1·x + $b1·y - $c1 = 0" if $!verbose;
+        my ($a2, $b2, $c2) = $h2.xy-trajectory;
+        say "#  - $h2: $a2·x + $b2·y - $c2 = 0" if $!verbose;
+
+        # If the trajectories are parallel, they will never intersect
+        # (Note that we're ignoring overlapping lines here)
+        if ($a1*$b2 == $a2*$b1) {
+            say "# parallel, will never intersect" if $!verbose;
+            return False;
+        }
+
+        # Determine the point (x,y) where they intersect
+        my $x = ($c2*$b1 - $c1*$b2) / ($a1*$b2 - $a2*$b1);
+        my $y = ($c2*$a1 - $c1*$a2) / ($b1*$a2 - $b2*$a1);
+        say "#  - intersection: ($x,$y)" if $!verbose;
+
+        # If this is outside the test range, it doesn't count
+        if $x !~~ $!test-range || $y !~~ $!test-range {
+            say "# outside of test range, doesn't count" if $!verbose;
+            return False;
+        }
+
+        # If either of the trajectories have the intersection point in the past,
+        # it doesn't count
+        if sign($x - $h1.start.x) != sign($h1.velocity.x) || sign($y - $h1.start.y) != sign($h1.velocity.y) {
+            say "# $h1 intersected in the past, doesn't count" if $!verbose;
+            return False;
+        }
+        if sign($x - $h2.start.x) != sign($h2.velocity.x) {
+            say "# $h2 intersected in the past, doesn't count" if $!verbose;
+            return False;
+        }
+
+        # The trajectories intersect, in the future, within the test range
+        say "# valid intersection" if $!verbose;
+        return True;
+    }
+
+    # Count the number of combinations of hailstones whose future trajectories intersect
+    method count-intersections
+    {
+        return @!hailstones.combinations(2)
+                           .map(-> ($h1, $h2) { self.will-intersect($h1, $h2) })
+                           .sum;
+    }
+
+    # Find the position of a rock that can be thrown so that it will hit all hailstones
+    method rock-position
+    {
+        # Find three hailstones with linearly independent velocities
+        my ($h1, $h2, $h3) = @!hailstones.combinations(3).first(-> ($h1,$h2,$h3) {
+                are-independent($h1.velocity, $h2.velocity, $h3.velocity)
+            });
+        say "# 3 hailstones with independent velocities:" if $!verbose;
+        say "#  - $h1" if $!verbose;
+        say "#  - $h2" if $!verbose;
+        say "#  - $h3" if $!verbose;
+
+        # For each pair of these three hailstones, find the plane of possible rock
+        # velocity vectors that can result in hitting both hailstones
+        my ($a, $A) = $h1.find-rock-velocity-plane($h2);
+        my ($b, $B) = $h2.find-rock-velocity-plane($h3);
+        my ($c, $C) = $h3.find-rock-velocity-plane($h1);
+        say "# Planes containing possible rock velocity vectors:" if $!verbose;
+        say "#  - $a, $A" if $!verbose;
+        say "#  - $b, $B" if $!verbose;
+        say "#  - $c, $C" if $!verbose;
+
+        # Now find the intersection of these three planes, that is the rock velocity
+        my $w = ($A * ($b × $c) + $B * ($c × $a) + $C * ($a × $b)) div det($a, $b, $c);
+        say "# Rock velocity: $w" if $!verbose;
+
+        # Now that we have the velocity vector, subtract that from the velocity of
+        # the first two (independent) hailstones to get the relative velocity from
+        # the frame of reference of the rock.
+        # Now find the crossing point of these hailstones using the new velocity
+        # vectors, that is the starting position of the rock.
+        my $w1 = $h1.velocity - $w;
+        my $w2 = $h2.velocity - $w;
+        my $ww = $w1 × $w2;
+        #say "# w1=$w1, w2=$ww, ww=$ww" if $!verbose;
+        
+        my $E = det($ww, $h2.start, $w2);
+        my $F = det($ww, $h1.start, $w1);
+        my $G = $h1.start · $ww;
+        my $S = $ww.abs2;
+        #say "# E=$E, F=$F, G=$G, S=$S" if $!verbose;
+
+        my $rock = ($E * $w1 - $F * $w2 + $G * $ww) div $S;
+        say "# Rock start position: $rock" if $!verbose;
+        return $rock;
+    }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc24.input', Bool :v(:$verbose) = False)
+{
+    my $test-range = $inputfile ~~ /sample/
+                        ?? 7 .. 27
+                        !! 200_000_000_000_000 .. 400_000_000_000_000;
+
+    my @hailstones = $inputfile.lines.map(-> $l { Hailstone.from-spec($l) });
+    my $air = Air.new(:@hailstones, :$test-range, :$verbose);
+
+    say "Part one: there are $air.count-intersections() intersections within the test area.";
+
+    say "Part two: the sum of the coordinates of the rock position is: ",
+        $air.rock-position.coords.sum;
+}
