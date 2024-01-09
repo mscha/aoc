@@ -1,0 +1,137 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2023 day 25 -- https://adventofcode.com/2023/day/25
+
+class Graph
+{
+    has Str $.spec;
+    has Bool $.verbose = False;
+
+    has SetHash $.vertices;
+    has SetHash $.edges;
+    has %.connected-to;
+
+    sub edge($node1, $node2) { "$node1 ↔ $node2" }
+    sub edge-vertices($edge) { $edge.comb(/[\w|'/']+/) }
+    sub combine-names(*@names) { @names.join('/').comb(/\w+/).sort.join('/') }
+
+    submethod TWEAK
+    {
+        # Build the graph from the spec
+        for $!spec.lines -> $l {
+            my ($node, @connected) = $l.comb(/\w+/);
+            say "# $node is connected to @connected.join(', ')" if $!verbose;
+            $!vertices{$node}++;
+            for @connected -> $conn {
+                $!vertices{$conn}++;
+                $!edges{edge($node, $conn)}++;
+                %!connected-to{$node}{$conn}++;
+                %!connected-to{$conn}{$node}++;
+            }
+        }
+        say self if $!verbose;
+    }
+
+    # Collapse an edge of the graph
+    method collapse($edge)
+    {
+        say "# collapsing edge $edge ..." if $!verbose;
+
+        my ($old1, $old2) = edge-vertices($edge);
+
+        # Remove the edge
+        $!edges{$edge}--;
+        %!connected-to{$old1}{$old2}--;
+        %!connected-to{$old2}{$old1}--;
+
+        # Combine the vertices
+        my $new-node = combine-names($old1, $old2);
+        say "#  - new node: $new-node" if $!verbose;
+
+        # Remove the old vertices, store the new one
+        $!vertices{$_}-- for $old1, $old2;
+        $!vertices{$new-node}++;
+
+        # Fix any edges connected to one of the old vertices
+        for $old1, $old2 -> $n1 {
+            for %!connected-to{$n1}.keys -> $n2 {
+                my $v = edge($n1, $n2);
+                my $v2 = edge($n2, $n1);
+                my $vn = edge($new-node, $n2);
+                if $n2 eq any($old1, $old2, $new-node) {
+                    # This edge is now a loop, discard it
+                    say "#  - delete $v" if $!verbose;
+                }
+                else {
+                    # Create a new edge from the new vertex
+                    say "#  - replace $v with $vn" if $!verbose;
+                    $!edges{$vn}++;
+                    %!connected-to{$new-node}{$n2} += %!connected-to{$n1}{$n2};
+                    %!connected-to{$n2}{$new-node} += %!connected-to{$n1}{$n2};
+                }
+
+                # Remove the old edge
+                $!edges{$v}--;
+                $!edges{$v2}--;
+                %!connected-to{$n1}{$n2}:delete;
+                %!connected-to{$n2}{$n1}:delete;
+            }
+
+            # Don't keep track of edges for the old vertex anymore
+            %!connected-to{$n1}:delete;
+        }
+    }
+
+    # Apply Karger's algorithm to find a minimal cut.
+    # (Note, a minimal, not necessarily the minimum.)
+    method find-minimal-cut
+    {
+        # Keep collapsing random edges until we have 2 vertices left
+        while ($!vertices.elems > 2) {
+            say "# $!vertices.elems() vertices left" if $!verbose;
+            self.collapse($!edges.pick);
+        }
+
+        # The 'weight' of the remaining edge is the size of this minimal cut
+        return %!connected-to.values[0].values[0];
+    }
+
+    method Str
+    {
+        my $vertStr = $!vertices.keys.sort.join(', ');
+        my $edgeStr = $!edges.keys.sort.join(', ');
+        my $connStr = %!connected-to.sort.map(-> $c {
+                        $c.key ~ ' → ' ~ $c.value.map({ .key~'='~.value }).join(', ')
+                      }).join("\n#     ");
+        return qq:to/END/.trim;
+            # vertices: $vertStr
+            # edges: $edgeStr
+            # connections:
+            #     $connStr
+            END
+    }
+    method gist { self.Str }
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc25.input', Bool :v(:$verbose) = False)
+{
+    my $spec = $inputfile.slurp;
+
+    loop {
+        # Create the graph, and apply Karger's algorithm to find a minimal cut
+        #my $g = Graph.new(:$spec, :$verbose);
+        my $g = Graph.new(:$spec);
+        my $min-cut = $g.find-minimal-cut;
+        say "# Found a minimal cut of size $min-cut" if $verbose;
+
+        # If the minimal cut size is 3, we found *the* minimum cut.
+        # (Otherwise, keep trying.)
+        if $min-cut == 3 {
+            say 'Part 1: the product of the group sizes is ',
+                [×] $g.vertices.keys.map(*.comb(/\w+/).elems);
+            last;
+        }
+    }
+}
