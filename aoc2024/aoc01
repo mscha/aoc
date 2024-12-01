@@ -4,15 +4,11 @@ $*OUT.out-buffer = False;   # Autoflush
 
 # Advent of Code 2024 day 1 -- https://adventofcode.com/2024/day/1
 
-sub difference(*@a where @a.elems == 2) { abs(@a[0] - @a[1]) }
-
 sub MAIN(IO() $inputfile where *.f = 'aoc01.input')
 {
-    my @pairs = $inputfile.lines».comb(/ <digit>+ /);
-    my @left = @pairs»[0];
-    my @right = @pairs»[1];
-    say "Part 1: ", (@left.sort Z @right.sort).map(*.&difference).sum;
+    my (@left, @right) := [Z] $inputfile.lines».comb(/ <digit>+ /);
+    say "Part 1: ", (@left.sort Z- @right.sort)».abs.sum;
 
     my $similarity = bag @right;
-    say "Part 2: ", @left.map({ $_ * $similarity{$_} }).sum;
+    say "Part 2: ", (@left Z× $similarity{@left}).sum;
 }
