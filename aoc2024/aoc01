@@ -7,7 +7,7 @@ $*OUT.out-buffer = False;   # Autoflush
 sub MAIN(IO() $inputfile where *.f = 'aoc01.input')
 {
     my (@left, @right) := [Z] $inputfile.lines».comb(/ <digit>+ /);
-    say "Part 1: ", (@left.sort Z- @right.sort)».abs.sum;
+    say "Part 1: ", (@left.sort(+*) Z- @right.sort(+*))».abs.sum;
 
     my $similarity = bag @right;
     say "Part 2: ", (@left Z× $similarity{@left}).sum;
