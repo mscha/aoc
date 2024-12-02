@@ -1,0 +1,31 @@
+#!/usr/bin/env raku
+use v6.d;
+$*OUT.out-buffer = False;   # Autoflush
+
+# Advent of Code 2024 day 2 -- https://adventofcode.com/2024/day/2
+
+sub is-safe(@report)
+{
+    # The levels are either all increasing or all decreasing
+    return False unless [<] @report or [>] @report;
+
+    # Any two adjacent levels differ by at least one and at most three
+    return (@report Z- @report[1..*])».abs.max ≤ 3;
+}
+
+sub is-almost-safe(@report)
+{
+    # The same rules apply as before ...
+    return True if is-safe(@report);
+
+    # ..., except if removing a single level from an unsafe report would
+    # make it safe, the report instead counts as safe.
+    return ?@report.combinations(@report.elems-1).grep(&is-safe);
+}
+
+sub MAIN(IO() $inputfile where *.f = 'aoc02.input')
+{
+    my @reports = $inputfile.lines».words;
+    say "Part 1: ", @reports.grep(&is-safe).elems;
+    say "Part 2: ", @reports.grep(&is-almost-safe).elems;
+}
