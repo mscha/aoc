@@ -17,7 +17,7 @@ sub MAIN(IO() $inputfile where *.f = 'aoc03.input')
     my $part1 = 0;
     my $part2 = 0;
     my $do = True;
-    for $program ~~ m:g / <mul> | <do> | <dont> / -> $/ {
+    for $program ~~ m:g / <mul> || <do> || <dont> / -> $/ {
         $do = True if $<do>;
         $do = False if $<dont>;
 
